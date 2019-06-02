@@ -1,0 +1,227 @@
+{% extends "layout.html" %}
+
+{% macro hashrate_format(hashrate) -%}
+  {% if hashrate < 1000 %}
+    <b>{{ hashrate }}</b> Hash/s
+  {% elif hashrate < 1000000 %}
+    <b>{{ (hashrate / 1000)|round(2) }}</b> KHash/s
+  {% elif hashrate < 1000000000 %}
+    <b>{{ (hashrate / 1000000)|round(2) }}</b> MHash/s
+  {% else %}
+    <b>{{ (hashrate / 1000000000)|round(2) }}</b> GHash/s
+  {% endif %}
+{%- endmacro %}
+
+{% macro data_box(color, size) -%}
+  <div class="my-box w-{{ size }} border {{ color }}" style="padding: 15px;">
+    {{ caller() }}
+  </div>
+{%- endmacro %}
+
+{% macro hashrate_graph(consensus, scene, y_values) -%}
+  {% call data_box('border-transparent', 100) -%}
+    <h5>{{ scene }} hashrate status {{ consensus }}</h5>
+    {% set element_id = consensus + '_' + scene|capitalize %}
+    <canvas id="{{ element_id }}" width="auto" height="100"></canvas>
+    <script type="text/javascript">
+      {
+          let y_axis = {{ y_values|tojson|safe }};
+          let consensus = "{{ consensus }}";
+          let points = y_axis.map(function (element) {
+              for (let inner of element) {
+                  if (inner[0] === consensus) {
+                      return inner[1]
+                  }
+              }
+              return null;
+          });
+          let datasets = [{
+              label: consensus,
+              data: points,
+              fill: false,
+              borderColor: colorPicker(),
+              lineTension: 0.2,
+              pointRadius: 0,
+              spanGaps: true,
+          }];
+          new Chart(document.getElementById("{{ element_id }}"), {
+              type: "line",
+              data: {
+                  labels: x_axis,
+                  datasets: datasets,
+              },
+              options: {
+                  scales: {
+                      xAxes: [{
+                          ticks: {
+                              autoSkip: true,
+                              maxTicksLimit: 10
+                          }
+                      }],
+                      yAxes: [{
+                          ticks: {
+                              beginAtZero: true,
+                              autoSkip: true,
+                              maxTicksLimit: 5,
+                              callback: value => {
+                                  if (value < 1000) {
+                                      return value + ' Hash/s';
+                                  } else if (value < 1000000) {
+                                      return Math.round(value/100)/10 + 'k Hash/s';
+                                  } else if (value < 1000000000) {
+                                      return Math.round(value/100000)/10 + 'M Hash/s';
+                                  } else {
+                                      return Math.round(value/100000000)/10 + 'G Hash/s';
+                                  }
+                              }
+                          }
+                      }]
+                  }
+              }
+          });
+      }
+    </script>
+  {%- endcall %}
+{%- endmacro %}
+
+{% block content %}
+  {% if wait_for_info %}
+    <div class="alert alert-warning border-warning" role="alert">
+      Pool status is not enough stored yet, please wait
+    </div>
+  {% else %}
+    <script type="text/javascript">
+      let color_list = [
+          "#ff6060",
+          "#ff60af",
+          "#ff60ff",
+          "#af60ff",
+          "#6060ff",
+          "#60afff",
+          "#5be2e2",
+          "#60ffaf",
+          "#60ff60",
+          "#a1f362",
+          "#f3f35e",
+          "#ffaf60",
+      ];
+      function colorPicker() {
+          if (0 < color_list.length) {
+              return color_list.shift();
+          }
+          let rand_value = ["FF", "00", Math.floor(Math.random() * 0xFF).toString(16)];
+          let color = "#";
+          while (0 < rand_value.length) {
+              let select = rand_value[Math.floor(Math.random()*rand_value.length)]
+              color += select;
+              rand_value = rand_value.filter(value => value !== select);
+          }
+          return color;
+      }
+      let x_axis = {{ pool_status_list|map(attribute='time')|list|tojson }};
+      x_axis = x_axis.map(element => {
+          let now = new Date(element * 1000);
+          let hour = now.getHours(), minute = now.getMinutes();
+          let str = ''
+          if (hour < 10) {str += '0'}
+          str += hour + ':'
+          if (minute < 10) {str += '0'}
+          return str + minute;
+      });
+    </script>
+    <!-- Chart.js https://www.chartjs.org/docs/latest/ -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@2.8.0/dist/Chart.min.css" integrity="sha256-aa0xaJgmK/X74WM224KMQeNQC2xYKwlAt08oZqjeF0E=" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0/dist/Chart.min.js" integrity="sha256-Uv9BNBucvCPipKQ2NS9wYpJmi8DTOEfTA/nH2aoJALw=" crossorigin="anonymous"></script>
+
+    <div class="d-flex flex-wrap mb-2">
+      <!-- pool status -->
+      {% call data_box('border-transparent', 50) %}
+        <h5>pool status</h5>
+        <ul class="list-unstyled">
+          <li><b>{{ workers }}</b> Workers</li>
+          {% for consensus, hashrate in pool_hashrate %}
+            <li>{{ consensus }}: {{ hashrate_format(hashrate) }}</li>
+          {% endfor %}
+        </ul>
+      {% endcall %}
+      <!-- network status -->
+      {% call data_box('border-transparent', 50) %}
+        <h5>network status</h5>
+        <ul class="list-unstyled">
+          <li>Height <b>{{ best_block.height }}</b></li>
+          {% for consensus, hashrate in network_hashrate %}
+            <li>{{ consensus }}: {{ hashrate_format(hashrate) }}</li>
+          {% endfor %}
+        </ul>
+      {% endcall %}
+      <!-- worker status -->
+      {% call data_box('border-transparent', 100) %}
+        <h5>worker status</h5>
+        <canvas id="workerChart" width="auto" height="100"></canvas>
+      {% endcall %}
+
+      <!-- pool hashrate status -->
+      {% set pool_hashrate = pool_status_list|map(attribute='pool_hashrate')|list %}
+      {% for consensus in consensus_list %}
+        {{ hashrate_graph(consensus, 'pool', pool_hashrate) }}
+      {% endfor %}
+
+      <!-- network hashrate status -->
+      {% set network_hashrate = pool_status_list|map(attribute='network_hashrate')|list %}
+      {% for consensus in consensus_list %}
+        {{ hashrate_graph(consensus, 'network', network_hashrate) }}
+      {% endfor %}
+    </div>
+    <script type="text/javascript">
+      {
+          let y_axis = {{ pool_status_list|map(attribute='workers')|list|tojson|safe }};
+          let consensus_list = {{ consensus_list|tojson|safe }};
+          let datasets = [];
+          for (let consensus of consensus_list) {
+              let data = y_axis.map(element => {
+                  for (let inner of element) {
+                      if (inner[0] === consensus){
+                      return inner[1];
+                      }
+                  }
+                  return null;
+              });
+              datasets.push({
+                  label: consensus,
+                  data: data,
+                  fill: true,
+                  borderColor: colorPicker(),
+                  lineTension: 0,
+                  pointRadius: 0,
+              });
+          }
+          new Chart(document.getElementById("workerChart"), {
+              type: "line",
+              data: {
+                  labels: x_axis,
+                  datasets: datasets
+              },
+              options: {
+                  scales: {
+                      yAxes: [{
+                          ticks: {
+                              beginAtZero: true,
+                              autoSkip: true,
+                              stepSize: 1,
+                              maxTicksLimit: 5,
+                          },
+                          stacked: true
+                      }],
+                      xAxes: [{
+                          ticks: {
+                              autoSkip: true,
+                              maxTicksLimit: 10
+                          }
+                      }]
+                  }
+              }
+          });
+      }
+    </script>
+  {% endif %}
+{% endblock %}

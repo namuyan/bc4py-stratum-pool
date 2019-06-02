@@ -1,0 +1,258 @@
+<!-- block template -->
+{% macro render_block(block) -%}
+  <div>
+    <table class="table">
+      <tr><th>hash</th><td><a href="explorer.html?blockhash={{ block.hash }}">{{ block.hash }}</a></td></tr>
+      <tr><th>work hash</th><td>{{ block.work_hash }}</td></tr>
+      <tr><th>previous hash</th><td><a href="explorer.html?blockhash={{ block.previous_hash }}">{{ block.previous_hash }}</a></td></tr>
+      {% if block.next_hash %}
+        <tr><th>next hash</th><td><a href="explorer.html?blockhash={{ block.next_hash }}">{{ block.next_hash }}</a></td></tr>
+      {% elif block.recode_flag != 'memory' %}
+        <tr><th>next block</th><td><a href="explorer.html?height={{ block.height + 1 }}">Block #{{ block.height + 1 }}</a></td></tr>
+      {% endif %}
+      <tr><th>merkleroot</th><td>{{ block.merkleroot }}</td></tr>
+    </table>
+    <table class="table table-borderless">
+      <tr class="border-top">
+        <th>height</th>
+        <th>algorithm</th>
+        <th>time</th>
+        <th>orphan flag</th>
+      </tr>
+      <tr>
+        <td>{{ block.height }}</td>
+        <td>{{ block.flag }}</td>
+        <td>{{ block.time }}</td>
+        <td>{{ block.f_orphan }}</td>
+      </tr>
+      <tr class="border-top">
+        <th>recode</th>
+        <th>difficulty</th>
+        <th>fixed difficulty</th>
+        <th>bits</th>
+      </tr>
+      <tr>
+        <td>{{ block.recode_flag }}</td>
+        <td>{{ block.difficulty }}</td>
+        <td>{{ block.fixed_difficulty }}</td>
+        <td>{{ block.bits }}</td>
+      </tr>
+      <tr class="border-top">
+        <th>bias</th>
+        <th>tx number</th>
+        <th>nonce</th>
+        <th>size</th>
+      </tr>
+      <tr>
+        <td>{{ block.bias }}</td>
+        <td>{{ block.txs|length }}</td>
+        <td>{{ block.nonce }}</td>
+        <td>{{ block.size }}</td>
+      </tr>
+    </table>
+  </div>
+{%- endmacro %}
+
+<!-- tx template -->
+{% macro render_tx(tx) -%}
+  <div>
+    <table class="table table-borderless">
+      <tr>
+        <th>hash</th>
+        <td><a href="explorer.html?txhash={{ tx.hash }}">{{ tx.hash }}</a></td>
+      </tr>
+      {% if tx.hash_locked %}
+        <tr>
+          <th>hash locked</th>
+          <td>{{ tx.hash_locked }}</td>
+        </tr>
+      {% endif %}
+    </table>
+    <table class="table table-borderless">
+      <tr class="border-top">
+        <th>version</th>
+        <th>type</th>
+        <th>time</th>
+        <th>gas amount</th>
+        <th>gas price</th>
+        <th>size / total</th>
+      </tr>
+      <tr>
+        <td>{{ tx.version }}</td>
+        <td>{{ tx.type }}</td>
+        <td>{{ tx.time }}</td>
+        <td>{{ tx.gas_amount }}</td>
+        <td>{{ tx.gas_price }}</td>
+        <td>{{ tx.size }} / {{ tx.total_size }}</td>
+      </tr>
+    </table>
+    <table class="table table-borderless">
+      <h5>inputs</h5>
+      {% if tx.inputs %}
+        <tr class="border-top">
+          <th>index</th><th>txhash</th><th>txindex</th>
+        </tr>
+        {% for txhash, txindex in tx.inputs %}
+          <tr>
+            <td>{{ loop.index - 1 }}</td>
+            <td><a href="explorer.html?txhash={{ txhash }}">{{ txhash }}</a></td>
+            <td>{{ txindex }}</td>
+          </tr>
+        {% endfor %}
+      {% else %}
+        <h6>no input</h6>
+      {% endif %}
+    </table>
+    <table class="table table-borderless">
+      <h5>outputs</h5>
+      {% if tx.outputs %}
+        <tr class="border-top">
+          <th>index</th><th>address</th><th>coinID</th><th>amount</th>
+        </tr>
+        {% for output in tx.outputs %}
+          <tr>
+            <td>{{ loop.index - 1 }}</td>
+            <td>{{ output[0] }}</td>
+            <td>{{ output[1] }}</td>
+            <td>{{ output[2] }}</td>
+          </tr>
+        {%  endfor %}
+      {% else %}
+        <h6>no output</h6>
+      {% endif %}
+    </table>
+    <table class="table table-borderless">
+      <h5>signature</h5>
+      {% if tx.signature %}
+        <tr class="border-top"><th>PublicKey, R, S</th></tr>
+        {% for sig in tx.signature %}
+          <tr>
+            <td>
+              <div>P : {{ sig[0] }}</div>
+              <div>R : {{ sig[1] }}</div>
+              <div>S : {{ sig[2] }}</div>
+            </td>
+          </tr>
+        {% endfor %}
+      {% else %}
+        <h6>no signature</h6>
+      {% endif %}
+    </table>
+  </div>
+{%- endmacro %}
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="icon" href="static/favicon.ico">
+    <title>{{ title }}</title>
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <!-- ver4: http://www.tohoho-web.com/bootstrap/index.html -->
+    <!-- dashboard: https://getbootstrap.com/docs/4.0/examples/dashboard/ -->
+    <!-- icon: https://octicons.github.com/ -->
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  {# static links #}
+  {% set side_links = [
+    {
+      'url': 'index.html',
+      'icon': 'home.svg',
+      'message': 'main page'
+    },
+    {
+      'url': 'started.html',
+      'icon': 'zap.svg',
+      'message': 'getting started'
+    },
+    {
+      'url': 'dashboard.html',
+      'icon': 'dashboard.svg',
+      'message': 'dashboard'
+    },
+    {
+      'url': 'explorer.html',
+      'icon': 'search.svg',
+      'message': 'block explorer'
+    },
+    {
+      'url': 'connection.html',
+      'icon': 'person.svg',
+      'message': 'connection'
+    },
+    {
+      'url': 'terms.html',
+      'icon': 'file.svg',
+      'message': 'terms&conditions'
+    }
+  ] %}
+  <!-- global style sheet -->
+  <style>
+    div.comment-box {
+      background-color: whitesmoke;
+      border-color: black;
+      border-width: 1px;
+      border-style: solid;
+      margin: 10px;
+      padding: 10px;
+    }
+    div.comment-box-title {
+      font-size: larger;
+      font-weight: bolder;
+    }
+    nav.sidebar {
+      position: fixed;
+      left: 0;
+      z-index: 100;
+      padding: 0;
+    }
+  </style>
+  <!-- main content -->
+  <body>
+    <!-- navigate bar -->
+    <nav class="navbar navbar-dark bg-dark flex-md-nowrap sticky-top">
+      <a href="./" class="navbar-brand">bc4py stratum pool</a>
+    </nav>
+    <!-- body content -->
+    <div class="container-fluid">
+      <div class="row">
+        <nav class="col-md-2 d-none d-md-block bg-light sidebar">
+          <div class="sidebar-sticky">
+            <ul class="nav flex-column">
+              {% for item in side_links %}
+                <li class="nav-item">
+                  <a class="nav-link" href="{{ item.url }}">
+                    <img src="static/{{ item.icon }}" height="auto" alt="{{ item.icon }}">
+                    <span class="text-dark">{{ item.message }}</span>
+                  </a>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        </nav>
+        <main class="col-md-9 ml-sm-auto col-lg-10 pt-3 px-4 table-sm" style="min-height: 500px;" role="main">
+          {% block content %}{% endblock %}
+        </main>
+      </div>
+    </div>
+    <!-- footer -->
+    <footer class="modal-footer bg-dark">
+      <a class="text-white" href="#">(C) 2019 namuyan</a>
+      <a class="text-white" href="https://twitter.com/namuyan_mine/">twitter</a>
+      <a class="text-white" href="https://github.com/namuyan/">github</a>
+    </footer>
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+  </body>
+</html>
+

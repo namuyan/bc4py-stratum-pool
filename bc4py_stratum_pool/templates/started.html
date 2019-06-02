@@ -1,0 +1,82 @@
+{% extends "layout.html" %}
+
+{% set hostname = 'pool.pycontract.tk' %}
+
+{% block content %}
+  <div class="comment-box">
+    <div class="comment-box-title">download mining software</div>
+    <table class="table">
+      <tr>
+        <th>algorithm</th>
+        <th>device</th>
+        <th>source</th>
+      </tr>
+      <tr>
+        <td>yespower/X16S</td>
+        <td>CPU</td><td>
+        <a href="https://github.com/JayDDee/cpuminer-opt">https://github.com/JayDDee/cpuminer-opt</a></td>
+      </tr>
+      <tr>
+        <td>X16S</td>
+        <td>AMD</td>
+        <td><a href="https://github.com/brian112358/avermore-miner">https://github.com/brian112358/avermore-miner</a></td>
+      </tr>
+      <tr>
+        <td>X16S</td>
+        <td>AMD</td>
+        <td><a href="https://github.com/KL0nLutiy/sgminer-kl">https://github.com/KL0nLutiy/sgminer-kl</a></td>
+      </tr>
+      <tr>
+        <td>X11/X16S</td>
+        <td>NVIDIA</td>
+        <td><a href="https://github.com/tpruvot/ccminer">https://github.com/tpruvot/ccminer</a></td>
+      </tr>
+      <tr>
+        <td>X11</td>
+        <td>ASIC</td>
+        <td><a href="https://github.com/stellawxo/X11-Miner">https://github.com/stellawxo/X11-Miner</a></td>
+      </tr>
+      <tr>
+        <td>X11</td>
+        <td>ASIC</td>
+        <td><a href="https://github.com/bitmaintech/cgminer-dash">https://github.com/bitmaintech/cgminer-dash</a></td>
+      </tr>
+    </table>
+  </div>
+  <div class="comment-box">
+    <div  class="comment-box-title">select best stratum</div>
+    When you submit share once in 30sec -> <code>best_difficulty = hashrate / 7158278 / 30</code>
+    <table class="table">
+      <tr>
+        <th>algorithm</th>
+        <th>difficulty</th>
+        <th>diff control</th>
+        <th>endpoint</th>
+      </tr>
+      {% for s in stratum %}
+        <tr>
+          <td>{{ s.algorithm }}</td>
+          <td>{{ s.difficulty }}</td>
+          {% if s.variable_diff %}
+            <td>dynamic</td>
+          {% else %}
+            <td>static</td>
+          {% endif %}
+          <td>stratum+tcp://{{ hostname }}:{{ s.port }}</td>
+        </tr>
+      {% endfor %}
+    </table>
+  </div>
+  <div class="comment-box">
+    <div  class="comment-box-title">make start script</div>
+    Write an execute script like bat or sh, examples.
+    <ul>
+      <li>CPU mining on windows<br>
+        <code>cpuminer-avx2.exe -a yespower -o stratum+tcp://{{ hostname }}:PORT -u ADDRESS -p X</code></li>
+      <li>GPU mining on linux<br>
+      <code>./sgminer -k x16s -o stratum+tcp://{{ hostname }}:PORT -d 0 -u ADDRESS -p X</code></li>
+      <li>ASIC mining on Linux<br>
+        <code>./cgminer --x11 -o stratum+tcp://{{ hostname }}:PORT -u ADDRESS -p X --dr1-clk 300 -S //./COM4 -S //./COM5 --du1</code></li>
+    </ul>
+  </div>
+{% endblock %}

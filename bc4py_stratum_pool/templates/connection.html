@@ -1,0 +1,34 @@
+{% extends "layout.html" %}
+
+{% block content %}
+  <table class="table">
+    <thead>
+    <tr>
+      <th>version</th>
+      <th>username</th>
+      <th>consensus</th>
+      <th>difficulty</th>
+      <th>share</th>
+      <th>hashrate</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    {% if data %}
+      {% for client in data %}
+        <tr>
+          <td>{{ client.version }}</td>
+          <td>{{ client.username }}</td>
+          <td>{{ client.consensus }}</td>
+          <td>{{ client.difficulty }}</td>
+          <td>{{ client.accept }} / {{ client.reject }}</td>
+          <td>{{ client.hashrate }}</td>
+        </tr>
+      {% endfor %}
+    {% else %}
+      <tr><td colspan="5">no client connection</td></tr>
+    {% endif %}
+    </tbody>
+  </table>
+{% endblock %}
+

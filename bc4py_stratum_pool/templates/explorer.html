@@ -1,0 +1,147 @@
+{% extends "layout.html" %}
+
+{% block content %}
+  <!-- blocks -->
+  <div>
+    {% if blocks %}
+      <h4>list block history</h4>
+      <table class="table table-striped table-sm">
+        <thead>
+          <tr>
+            <th>height</th>
+            <th>blockhash</th>
+            <th>algorithm</th>
+            <th>tx</th>
+            <th>difficulty</th>
+            <th>age</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for block in blocks %}
+            <tr>
+              <td>{{ block.height }}</td>
+              <td><a href="explorer.html?blockhash={{ block.hash }}" class="d-block text-truncate">{{ block.hash }}</a></td>
+              <td>{{ block.flag }}</td>
+              <td>{{ block.txs|length }}</td>
+              <td>{{ block.fixed_difficulty }}</td>
+              {% set age = time - block.time %}
+              {% if age < 60 %}
+                <td>{{ age }}s</td>
+              {% elif age < 3600 %}
+                <td>{{ (age / 60)|round(1) }}m</td>
+              {% else %}
+                <td>{{ (age / 3600)|round(1) }}h</td>
+              {% endif %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% elif blocks is defined %}
+      <div class="alert alert-primary border-primary" role="alert">
+        queue has no block, please wait for getting from stream
+      </div>
+    {% endif %}
+  </div>
+  <!-- txs -->
+  <div>
+    {% if txs %}
+      <h5>list tx history</h5>
+      <table class="table table-striped table-sm">
+        <thead>
+          <tr>
+            <th>txhash</th>
+            <th>type</th>
+            <th>size</th>
+            <th>gas</th>
+            <th>in</th>
+            <th>out</th>
+            <th>age</th>
+          </tr>
+        </thead>
+        <tbody class="text-center">
+          {% for tx in txs %}
+            <tr>
+              <td><a href="explorer.html?txhash={{ tx.hash }}">{{ tx.hash }}</a></td>
+              <td>{{ tx.type }}</td>
+              <td>{{ tx.size }}</td>
+              <td>{{ tx.gas_amount }}</td>
+              <td>{{ tx.inputs|length }}</td>
+              <td>{{ tx.outputs|length }}</td>
+              {% set age = time - tx.time %}
+              {% if age < 60 %}
+                <td>{{ age }}s</td>
+              {% elif age < 3600 %}
+                <td>{{ (age / 60)|round(1) }}m</td>
+              {% else %}
+                <td>{{ (age / 3600)|round(1) }}h</td>
+              {% endif %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% elif txs is defined %}
+      <div class="alert alert-primary border-primary" role="alert">
+        queue has no tx, please wait for getting from stream
+      </div>
+    {% endif %}
+  </div>
+  <!-- block info -->
+  <div>
+    {% if block_info %}
+      <h1>
+        Block #{{ block_info.height }}
+        {% if best_height %}
+          {% set confirm = best_height - block_info.height %}
+          {% if confirm < 3 %}
+            <span class="text-danger">({{ confirm }} confirmed)</span>
+          {% elif confirm < 6 %}
+            <span class="text-warning">({{ confirm }} confirmed)</span>
+          {% else %}
+            <span class="text-success">({{ confirm }} confirmed)</span>
+          {% endif %}
+        {% endif %}
+      </h1>
+      {{ render_block(block_info) }}
+      <div style="border-style: solid;padding: 10px;">
+        <h3>include transactions</h3>
+        {% for tx in block_info.txs %}
+          <a href="#TX{{ loop.index }}">TX {{ loop.index - 1 }}: {{ tx.hash }}</a><br>
+        {% endfor %}
+      </div>
+      {% for tx in block_info.txs %}
+        <h2 id="TX{{ loop.index }}" style="padding-top: 20px;">TX {{ loop.index - 1 }}</h2>
+        {{ render_tx(tx) }}
+      {% endfor %}
+    {% endif %}
+  </div>
+  <!-- tx info -->
+  <div>
+    {% if tx_info %}
+      {% if tx_info.height %}
+        <h1 style="padding-top: 20px;">
+          TX #{{ tx_info.height }}
+          {% if best_height %}
+            {% set confirm = best_height - tx_info.height %}
+            {% if confirm < 3 %}
+              <span class="text-danger">({{ confirm }} confirmed)</span>
+            {% elif confirm < 6 %}
+              <span class="text-warning">({{ confirm }} confirmed)</span>
+            {% else %}
+              <span class="text-success">({{ confirm }} confirmed)</span>
+            {% endif %}
+          {% endif %}
+        </h1>
+        <h5>include by <a href="explorer.html?height={{ tx_info.height }}">Block #{{ tx_info.height }}</a></h5>
+      {% else %}
+        <h1 style="padding-top: 20px;">TX unconfirmed</h1>
+      {% endif %}
+      {{ render_tx(tx_info) }}
+      {% if tx_info.message_type != 'NONE' %}
+        <div class="comment-box" style="word-wrap: break-word;">
+          <h5>{{ tx_info.message_type }}</h5>
+          {{ tx_info.message }}
+        </div>
+      {% endif %}
+    {% endif %}
+  </div>
+{% endblock %}
