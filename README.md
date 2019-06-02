@@ -60,6 +60,8 @@ def main():
         C.BLOCK_X16S_POW,
         C.BLOCK_X11_POW,
     ]
+    # hostname
+    Const.HOST_NAME = 'pool.example.com'
     # account database control
     run_coroutine_threadsafe(first_init_database(Const.DATABASE_PATH), loop)
     # auto payout

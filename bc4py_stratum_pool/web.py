@@ -2,6 +2,7 @@ from bc4py_stratum_pool.ask import *
 from bc4py_stratum_pool.autowork import *
 from bc4py_stratum_pool.client import client_list
 from bc4py_stratum_pool.stratum import stratum_list
+from bc4py_stratum_pool.config import Const
 from logging import getLogger
 from aiohttp.web import BaseRequest
 from aiohttp import web
@@ -28,6 +29,7 @@ async def page_index(request: BaseRequest):
 async def page_started(request: BaseRequest):
     return {
         'title': 'getting started',
+        'hostname': Const.HOST_NAME,
         'stratum': stratum_list
     }
 
