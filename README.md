@@ -27,6 +27,9 @@ cd ~/blockchain-py/
 # download bc4py-stratum-pool program
 git clone https://github.com/namuyan/bc4py-stratum-pool
  
+# install requirements
+pip3 install --user -r bc4py-stratum-pool/requirements.txt
+ 
 # copy pool program to same folder with bc4py source
 cp -r bc4py-stratum-pool/bc4py_stratum_pool ./
 rm -r bc4py-stratum-pool
