@@ -96,7 +96,7 @@ def get_submit_data(job: Job, extranonce1: bytes, extranonce2: bytes, nonce: byt
             submit_data += tx[1]
     else:
         submit_data = None
-    return submit_data, block.hash, f_mined, f_shared
+    return submit_data, block, f_mined, f_shared
 
 
 async def add_new_job(algorithm: int) -> Job:

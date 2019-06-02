@@ -10,11 +10,18 @@ from binascii import a2b_hex
 from os import urandom
 from time import time
 from logging import getLogger
+from bc4py.config import C
 
 """Methods (client to server)
 """
 
 log = getLogger(__name__)
+# accept lower works divided by co_efficiency
+co_efficiency = {
+    C.BLOCK_YES_POW: 65536,
+    C.BLOCK_X16S_POW: 256,
+    C.BLOCK_X11_POW: 1,
+}
 
 
 async def mining_authorize(client: Client, params: list, uuid: int):
@@ -113,17 +120,22 @@ async def mining_submit(client: Client, params: list, uuid: int):
             log.warning(f"submit different time, {job.ntime} != {ntime}")
             await response_failed(client, OTHER_UNKNOWN, uuid)
             return
+        if client.algorithm not in co_efficiency:
+            log.warning(f"not found algorithm in co_efficiency?")
+            await response_failed(client, OTHER_UNKNOWN, uuid)
+            return
         # try to generate submit data
-        submit_data, blockhash, f_mined, f_shared = get_submit_data(
-            job, client.extranonce_1, extranonce2, nonce, client.difficulty)
-        if blockhash in job.submit_hashs:
+        fixed_difficulty = client.difficulty / co_efficiency[client.algorithm]
+        submit_data, block, f_mined, f_shared = get_submit_data(
+            job, client.extranonce_1, extranonce2, nonce, fixed_difficulty)
+        if block.hash in job.submit_hashs:
             await response_failed(client, DUPLICATE_SHARE, uuid)
             return
         # try to submit work
         if f_mined or f_shared:
             client.n_accept += 1
             client.time_works.append((time(), client.difficulty))
-            job.submit_hashs.append(blockhash)
+            job.submit_hashs.append(block.hash)
             # submit block
             if f_mined:
                 pwd = str(job.algorithm)
@@ -138,9 +150,11 @@ async def mining_submit(client: Client, params: list, uuid: int):
             # recode share
             async with create_db(Const.DATABASE_PATH) as db:
                 cur = await db.cursor()
-                recode_hash = blockhash if f_mined else None
+                # how many ratio you generate hash (target/work)
+                share = block.work_difficulty / block.difficulty
+                recode_hash = block.hash if f_mined else None
                 await insert_new_share(cur=cur, account_id=client.account_id,
-                                       algorithm=client.algorithm, blockhash=recode_hash, share=job.difficulty)
+                                       algorithm=client.algorithm, blockhash=recode_hash, share=share)
                 await db.commit()
         else:
             client.n_reject += 1
