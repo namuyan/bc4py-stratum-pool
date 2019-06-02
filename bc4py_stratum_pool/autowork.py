@@ -197,26 +197,31 @@ async def auto_block_notify(algorithm_list: list, job_span=60):
 async def auto_notify_by_ws(dest='/public/ws'):
     """receive new block by websocket"""
     global f_enable
-    async with aiohttp.ClientSession() as session:
-        async with session.ws_connect(Const.REST_API + dest) as ws:
-            log.info(f"connect websocket to {Const.REST_API}{dest}")
-            while not ws.closed and f_enable:
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.ws_connect(Const.REST_API + dest) as ws:
+                log.info(f"connect websocket to {Const.REST_API}{dest}")
+                while not ws.closed and f_enable:
+                    try:
+                        data: dict = await ws.receive_json(timeout=1)
+                        if data['cmd'] == 'Block':
+                            await block_notify_que.put(data['data'])
+                            block_history_list.append(data['data'])
+                        if data['cmd'] == 'TX':
+                            tx_history_list.append(data['data'])
+                    except asyncio.TimeoutError:
+                        pass
+                    except TypeError as e:
+                        log.debug(f"type error {e}")
+                    # TODO: reconnect process
+                # close process
                 try:
-                    data: dict = await ws.receive_json(timeout=1)
-                    if data['cmd'] == 'Block':
-                        await block_notify_que.put(data['data'])
-                        block_history_list.append(data['data'])
-                    if data['cmd'] == 'TX':
-                        tx_history_list.append(data['data'])
-                except asyncio.TimeoutError:
+                    await ws.close()
+                except Exception:
                     pass
-                # TODO: reconnect process
-            # close process
-            try:
-                await ws.close()
-            except Exception:
-                pass
-            log.info("close websocket")
+                log.info("close websocket")
+    except Exception:
+        log.error('auto_notify_by_ws exception', exc_info=True)
 
 
 def close_auto_notify():
