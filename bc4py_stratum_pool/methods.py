@@ -125,7 +125,7 @@ async def mining_submit(client: Client, params: list, uuid: int):
             await response_failed(client, OTHER_UNKNOWN, uuid)
             return
         # try to generate submit data
-        fixed_difficulty = client.difficulty / co_efficiency[client.algorithm]
+        fixed_difficulty = min(client.diff_list) / co_efficiency[client.algorithm]
         submit_data, block, f_mined, f_shared = get_submit_data(
             job, client.extranonce_1, extranonce2, nonce, fixed_difficulty)
         if block.hash in job.submit_hashs:
@@ -134,7 +134,7 @@ async def mining_submit(client: Client, params: list, uuid: int):
         # try to submit work
         if f_mined or f_shared:
             client.n_accept += 1
-            client.time_works.append((time(), client.difficulty))
+            client.time_works.append((time(), block.work_difficulty))
             job.submit_hashs.append(block.hash)
             # submit block
             if f_mined:

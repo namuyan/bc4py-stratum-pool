@@ -128,16 +128,14 @@ async def schedule_dynamic_difficulty(client: Client, schedule_span=60):
             else:
                 # client has enough data to adjust
                 real_span = client.average_submit_span()
-                bias = max(min(client.submit_span / max(1.0, real_span), 2.0), 0.5)
+                bias = max(min(client.submit_span / max(1.0, real_span), 1.3), 0.7)
                 if 0.90 < bias < 1.1:
                     continue
                 new_difficulty = round(client.difficulty * bias, 8)
             # adjust difficulty
             log.debug(f"adjust difficulty {client.difficulty} -> {new_difficulty}")
             client.difficulty = new_difficulty
-            # check with new difficulty for 10min
             await mining_set_difficulty(client)
-            await asyncio.sleep(600)
         except Exception:
             log.error("difficulty scheduler exception", exc_info=True)
             break

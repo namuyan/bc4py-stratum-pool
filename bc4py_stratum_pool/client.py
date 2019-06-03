@@ -14,7 +14,7 @@ log = getLogger(__name__)
 
 class Client(object):
     __slots__ = ("f_enable", "reader", "writer", "algorithm",
-                 "difficulty", "username", "password","account_id",
+                 "diff_list", "username", "password","account_id",
                  "subscription_id", "extranonce_1", "version",
                  "time_works", "submit_span", "n_accept", "n_reject")
 
@@ -23,14 +23,15 @@ class Client(object):
         self.reader: StreamReader = reader
         self.writer: StreamWriter = writer
         self.algorithm: int = algorithm
-        self.difficulty: float = difficulty
+        self.diff_list = deque(maxlen=5)
+        self.diff_list.append(difficulty)
         self.username: Optional[str] = None
         self.password: Optional[str] = None
         self.account_id: Optional[int] = None
         self.subscription_id: Optional[bytes] = None
         self.extranonce_1: Optional[bytes] = None
         self.version: Optional[str] = None
-        self.time_works = deque(maxlen=30)
+        self.time_works = deque(maxlen=50)
         self.submit_span = submit_span
         self.n_accept = 0
         self.n_reject = 0
@@ -42,6 +43,16 @@ class Client(object):
     @property
     def consensus_name(self):
         return C.consensus2name[self.algorithm]
+
+    @property
+    def difficulty(self):
+        """get newest difficulty"""
+        return self.diff_list[-1]
+
+    @difficulty.setter
+    def difficulty(self, value):
+        """add new difficulty"""
+        self.diff_list.append(value)
 
     def average_submit_span(self):
         """weighted average submit span"""
@@ -60,28 +71,16 @@ class Client(object):
         """
         7158278.8 = max_target / base_target
         network_hashrate(h/s) = difficulty * 7158278.8
-        best_stratum_diff = miner_hashrate / 7158278.8 / submit_span
-        pool_hashrate(h/s) = stratum_diff * 7158278.8 * submit_span
         """
         # https://slushpool.com/help/terminology/
-        if len(self.time_works) < 10:
+        if len(self.time_works) < 20:
             return 0
-        """
-        sum_diff = 0.0
-        old_ntime = self.time_works[0][0]
-        for ntime, diff in self.time_works:
-            real_span = max(1, ntime - old_ntime)
-            best_diff = diff * self.submit_span / real_span
-            # add atomic fixed_diff
-            sum_diff += best_diff * real_span / self.submit_span
-            old_ntime = ntime
-        estimate_diff = sum_diff / len(self.time_works)
-        """
         sum_diff = 0.0
         for _, diff in self.time_works:
             sum_diff += diff
-        hashrate = (sum_diff / len(self.time_works)) * 7158278.8 * self.submit_span
-        return int(hashrate)
+        # difficulty_in_600s = difficulty_in_Ns / 600 * N
+        miner_diff = sum_diff * 600.0 / max(1, self.time_works[-1][0] - self.time_works[0][0])
+        return int(miner_diff * 7158278.8)
 
     @property
     def hashrate_str(self):
