@@ -113,6 +113,7 @@ async def schedule_dynamic_difficulty(client: Client, schedule_span=60):
     adjust difficulty at regular interval
     node: short schedule span often cause low-difficulty-share reject
     """
+    last_update_bias = 0.0
     while client.f_enable:
         try:
             await asyncio.sleep(schedule_span)
@@ -128,10 +129,13 @@ async def schedule_dynamic_difficulty(client: Client, schedule_span=60):
             else:
                 # client has enough data to adjust
                 real_span = client.average_submit_span()
-                bias = max(min(client.submit_span / max(1.0, real_span), 1.3), 0.7)
+                bias = client.submit_span / max(1.0, real_span)
+                if bias == last_update_bias:
+                    continue
+                last_update_bias = bias
                 if 0.90 < bias < 1.1:
                     continue
-                new_difficulty = round(client.difficulty * bias, 8)
+                new_difficulty = round(client.difficulty * max(min(bias, 1.3), 0.7), 8)
             # adjust difficulty
             log.debug(f"adjust difficulty {client.difficulty} -> {new_difficulty}")
             client.difficulty = new_difficulty
