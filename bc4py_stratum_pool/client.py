@@ -1,8 +1,10 @@
+from bc4py_stratum_pool.config import co_efficiency
 from bc4py.config import C
 from asyncio.streams import StreamReader, StreamWriter
 from logging import getLogger
 from typing import Optional, List, Deque
 from collections import deque
+from time import time
 import asyncio
 import json
 
@@ -31,7 +33,7 @@ class Client(object):
         self.subscription_id: Optional[bytes] = None
         self.extranonce_1: Optional[bytes] = None
         self.version: Optional[str] = None
-        self.time_works = deque(maxlen=50)
+        self.time_works = deque(maxlen=40)
         self.submit_span = submit_span
         self.n_accept = 0
         self.n_reject = 0
@@ -54,16 +56,24 @@ class Client(object):
         """add new difficulty"""
         self.diff_list.append(value)
 
-    def average_submit_span(self):
+    def average_submit_span(self) -> Optional[float]:
         """weighted average submit span"""
-        assert 1 < len(self.time_works)
+        if len(self.time_works) < 2:
+            return None
         real = 0.0
         divide = 0
-        old_ntime = self.time_works[0][0]
-        for index, (ntime, _) in enumerate(self.time_works):
+        old_ntime = None
+        time_limit = time() - 60 * 15  # limit latest 15min data
+        for index, (ntime, _) in enumerate(filter(lambda x: time_limit < x[0], self.time_works)):
+            if old_ntime is None:
+                old_ntime = ntime
             real += (ntime - old_ntime) * index
             divide += index
             old_ntime = ntime
+        if old_ntime is None:
+            return None
+        if divide == 0:
+            return None
         return real / divide
 
     @property
@@ -75,11 +85,22 @@ class Client(object):
         # https://slushpool.com/help/terminology/
         if len(self.time_works) < 20:
             return 0
+        count = 0
         sum_diff = 0.0
-        for _, diff in self.time_works:
+        begin_time = None
+        time_limit = time() - 60 * 15  # limit latest 15min data
+        for ntime, diff in filter(lambda x: time_limit < x[0], self.time_works):
+            if begin_time is None:
+                begin_time = ntime
             sum_diff += diff
-        # difficulty_in_600s = difficulty_in_Ns / 600 * N
-        miner_diff = sum_diff * 600.0 / max(1, self.time_works[-1][0] - self.time_works[0][0])
+            count += 1
+        if count < 3:
+            return 0
+        if begin_time is None:
+            return 0
+        end_time = self.time_works[-1][0]
+        # difficulty_in_600s = difficulty_in_Ns * 600 / N
+        miner_diff = sum_diff * 600.0 / co_efficiency[self.algorithm] / max(1, end_time - begin_time)
         return int(miner_diff * 7158278.8)
 
     @property

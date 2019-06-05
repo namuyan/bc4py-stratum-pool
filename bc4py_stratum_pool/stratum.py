@@ -6,7 +6,6 @@ from bc4py.config import C
 from typing import List
 from logging import getLogger
 from collections import namedtuple
-from time import time
 import asyncio
 import json
 
@@ -108,7 +107,7 @@ async def wrap_with_delay(sec, func, *args):
     await func(*args)
 
 
-async def schedule_dynamic_difficulty(client: Client, schedule_span=60):
+async def schedule_dynamic_difficulty(client: Client, schedule_span=90):
     """
     adjust difficulty at regular interval
     node: short schedule span often cause low-difficulty-share reject
@@ -122,27 +121,30 @@ async def schedule_dynamic_difficulty(client: Client, schedule_span=60):
             if client.subscription_id is None:
                 continue  # client not subscribed
             elif len(client.time_works) < 2:
-                # client has few submit data
+                # beginning diff is too high
                 new_difficulty = round(client.difficulty * 0.5, 8)
             elif len(client.time_works) < 10:
                 continue  # wait for enough work stored
             else:
                 # client has enough data to adjust
                 real_span = client.average_submit_span()
-                bias = client.submit_span / max(1.0, real_span)
-                if bias == last_update_bias:
-                    continue
-                last_update_bias = bias
-                if 0.90 < bias < 1.1:
-                    continue
-                new_difficulty = round(client.difficulty * max(min(bias, 1.3), 0.7), 8)
+                if real_span is None:
+                    # bind to high difficulty
+                    new_difficulty = round(client.difficulty * 0.7, 8)
+                else:
+                    bias = client.submit_span / max(1.0, real_span)
+                    if bias == last_update_bias:
+                        continue
+                    last_update_bias = bias
+                    if 0.90 < bias < 1.1:
+                        continue
+                    new_difficulty = round(client.difficulty * max(min(bias, 1.3), 0.7), 8)
             # adjust difficulty
             log.debug(f"adjust difficulty {client.difficulty} -> {new_difficulty}")
             client.difficulty = new_difficulty
             await mining_set_difficulty(client)
         except Exception:
             log.error("difficulty scheduler exception", exc_info=True)
-            break
 
 
 __all__ = [

@@ -1,4 +1,4 @@
-from bc4py_stratum_pool.config import Const
+from bc4py_stratum_pool.config import Const, co_efficiency
 from bc4py_stratum_pool.client import *
 from bc4py_stratum_pool.job import *
 from bc4py_stratum_pool.ask import *
@@ -10,18 +10,11 @@ from binascii import a2b_hex
 from os import urandom
 from time import time
 from logging import getLogger
-from bc4py.config import C
 
 """Methods (client to server)
 """
 
 log = getLogger(__name__)
-# accept lower works divided by co_efficiency
-co_efficiency = {
-    C.BLOCK_YES_POW: 65536,
-    C.BLOCK_X16S_POW: 256,
-    C.BLOCK_X11_POW: 1,
-}
 
 
 async def mining_authorize(client: Client, params: list, uuid: int):
@@ -134,7 +127,7 @@ async def mining_submit(client: Client, params: list, uuid: int):
         # try to submit work
         if f_mined or f_shared:
             client.n_accept += 1
-            client.time_works.append((time(), block.work_difficulty))
+            client.time_works.append((time(), sum(client.diff_list)/len(client.diff_list)))
             job.submit_hashs.append(block.hash)
             # submit block
             if f_mined:

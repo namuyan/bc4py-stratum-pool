@@ -1,3 +1,4 @@
+from bc4py.config import C
 
 
 class Const:
@@ -10,6 +11,14 @@ class Const:
     HOST_NAME = 'localhost'
 
 
+# accept lower works divided by co_efficiency
+co_efficiency = {
+    C.BLOCK_YES_POW: 65536,
+    C.BLOCK_X16S_POW: 256,
+    C.BLOCK_X11_POW: 1,
+}
+
 __all__ = [
     "Const",
+    "co_efficiency",
 ]
