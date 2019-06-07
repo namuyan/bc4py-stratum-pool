@@ -2,6 +2,8 @@ from aiocontext import async_contextmanager
 from aiosqlite import connect, Connection, Cursor
 from typing import Optional, List
 from logging import getLogger, INFO
+from binascii import a2b_hex
+from os import urandom
 from time import time
 
 log = getLogger(__name__)
@@ -67,6 +69,12 @@ async def first_init_database(path):
             `time` INTEGER NOT NULL
             )""")
             await cur.execute("""
+            CREATE TABLE IF NOT EXISTS `subscription` (
+            `id` INTEGER PRIMARY KEY,
+            `extranonce` BLOB NOT NULL,
+            `time` INTEGER NOT NULL
+            )""")
+            await cur.execute("""
             CREATE TABLE IF NOT EXISTS `share` (
             `time` REAL PRIMARY KEY,
             `account_id` INTEGER NOT NULL,
@@ -129,6 +137,32 @@ async def insert_new_account(cur: Cursor, address) -> int:
     await cur.execute("SELECT last_insert_rowid()")
     account_id = await cur.fetchone()
     return account_id[0]
+
+
+"""subscribe
+"""
+
+
+async def read_subscription_id2extranonce(cur: Cursor, subscription_id: bytes):
+    """get extranonce_1 from subscription_id"""
+    top_id = subscription_id[26:32]
+    await cur.execute("""
+    SELECT `extranonce` FROM `subscription` WHERE `id`=?
+    """, (int.from_bytes(top_id, 'big'),))
+    extranonce = await cur.fetchone()
+    if extranonce is None:
+        return None
+    return extranonce[0]
+
+
+async def insert_new_subscription(cur: Cursor, extranonce):
+    """recode extranonce and subscription_id"""
+    top_id = urandom(6)
+    await cur.execute("""
+    INSERT INTO `subscription` (`id`, `extranonce`, `time`) VALUES (?,?,?)
+    """, (int.from_bytes(top_id, 'big'), extranonce, int(time())))
+    # 26 + 6 = 32 bytes
+    return a2b_hex('deadbeefcafe00000000000000000000000000000000000000ff') + top_id
 
 
 """share
@@ -293,6 +327,8 @@ __all__ = [
     "read_address2account_id",
     "read_account_id2address",
     "insert_new_account",
+    "read_subscription_id2extranonce",
+    "insert_new_subscription",
     "read_total_unpaid_shares",
     "read_account_unpaid_shares",
     "read_related_accounts",

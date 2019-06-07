@@ -180,28 +180,44 @@ async def mining_subscribe(client: Client, params: list, uuid: int):
     """
     client.version = str(params[0]) if 0 < len(params) else 'unknown'
     client.subscription_id = a2b_hex(params[1]) if 1 < len(params) else None
-    # restore works from close_deque
-    for old_client in reversed(closed_deque):
-        if client.subscription_id is None:
-            continue
-        elif client.subscription_id != old_client.subscription_id:
-            continue
-        elif client.algorithm != old_client.algorithm:
-            continue
-        else:
-            client.time_works = old_client.time_works
-            client.difficulty = old_client.difficulty
-            client.submit_span = old_client.submit_span
-            client.extranonce_1 = old_client.extranonce_1
-            client.n_accept = old_client.n_accept
-            client.n_reject = old_client.n_reject
-            log.debug("resume from disconnected client data")
-            closed_deque.remove(old_client)
-            break
+    if client.subscription_id is None:
+        # setup new subscription info
+        async with create_db(Const.DATABASE_PATH) as db:
+            cur = await db.cursor()
+            client.extranonce_1 = urandom(4)
+            client.subscription_id = await insert_new_subscription(cur=cur, extranonce=client.extranonce_1)
+            await db.commit()
     else:
-        # setup new client info
-        client.subscription_id = urandom(32)
-        client.extranonce_1 = urandom(4)
+        # restore works from close_deque
+        for old_client in reversed(closed_deque):
+            if client.subscription_id != old_client.subscription_id:
+                continue
+            elif client.algorithm != old_client.algorithm:
+                continue
+            else:
+                client.time_works = old_client.time_works
+                client.difficulty = old_client.difficulty
+                client.submit_span = old_client.submit_span
+                client.extranonce_1 = old_client.extranonce_1
+                client.n_accept = old_client.n_accept
+                client.n_reject = old_client.n_reject
+                log.debug("resume from disconnected client data")
+                closed_deque.remove(old_client)
+                break
+        else:
+            # recover subscription from database
+            async with create_db(Const.DATABASE_PATH) as db:
+                cur = await db.cursor()
+                extranonce_1 = await read_subscription_id2extranonce(
+                    cur=cur, subscription_id=client.subscription_id)
+                if extranonce_1 is None:
+                    # remove client info
+                    client.subscription_id = None
+                    raise ConnectionError('unknown subscription id')
+                else:
+                    client.extranonce_1 = extranonce_1
+                    log.debug("resume from database")
+    # notify subscription info
     extranonce_2_size = 4
     result = [
         [
