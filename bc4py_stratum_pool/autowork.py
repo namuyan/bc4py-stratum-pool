@@ -16,6 +16,7 @@ import asyncio
 
 
 log = getLogger(__name__)
+loop = asyncio.get_event_loop()
 PoolStatus = namedtuple('PoolStatus', [
     'time', 'workers', 'pool_hashrate', 'network_hashrate', 'share'])
 pool_status_list: Deque[PoolStatus] = deque(maxlen=60*24)  # for 1 day
@@ -213,7 +214,11 @@ async def auto_notify_by_ws(dest='/public/ws'):
                         pass
                     except TypeError as e:
                         log.debug(f"type error {e}")
-                    # TODO: reconnect process
+                # reconnect process
+                if f_enable:
+                    await asyncio.sleep(10)
+                    asyncio.run_coroutine_threadsafe(auto_notify_by_ws(dest=dest), loop)
+                    log.info("try to reconnect websocket")
                 # close process
                 try:
                     await ws.close()
