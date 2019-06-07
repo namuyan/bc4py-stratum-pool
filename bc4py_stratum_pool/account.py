@@ -99,6 +99,25 @@ async def first_init_database(path):
         log.error("database init exception", exc_info=True)
     log.info("finish init database")
 
+
+async def cleanup_database(path, past=60*24*60):
+    """cleanup old data from database"""
+    try:
+        async with create_db(path) as db:
+            cur = await db.cursor()
+            # auto clean data
+            time_limit = int(time()) - past
+            await cur.execute("""
+            DELETE FROM `subscription` WHERE `time` < ?
+            """, (time_limit,))
+            await cur.execute("""
+            DELETE FROM `share` WHERE `time` < ?
+            """, (time_limit,))
+            await db.commit()
+    except Exception:
+        log.error("database cleanup exception", exc_info=True)
+
+
 """account
 """
 

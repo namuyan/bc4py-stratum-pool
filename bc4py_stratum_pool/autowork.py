@@ -229,7 +229,7 @@ async def auto_notify_by_ws(dest='/public/ws'):
         log.error('auto_notify_by_ws exception', exc_info=True)
 
 
-def close_auto_notify():
+def close_auto_works():
     global f_enable
     log.info("close auto notify")
     f_enable = False
@@ -244,5 +244,5 @@ __all__ = [
     "auto_pool_status_recode",
     "auto_block_notify",
     "auto_notify_by_ws",
-    "close_auto_notify",
+    "close_auto_works",
 ]
