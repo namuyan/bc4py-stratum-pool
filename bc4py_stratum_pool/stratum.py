@@ -49,7 +49,7 @@ def stratum_handle(algorithm: int, difficulty: float, variable_diff=True, submit
             asyncio.run_coroutine_threadsafe(wrap_with_delay(5, mining_set_difficulty, client), loop)
             # wait for data
             prefix = b''
-            while True:
+            while client.f_enable:
                 msg, prefix = await get_atomic_message(prefix, reader)
                 # receive correct message
                 method = msg.get('method')
@@ -143,6 +143,9 @@ async def schedule_dynamic_difficulty(client: Client, schedule_span=90):
             log.debug(f"adjust difficulty {client.difficulty} -> {new_difficulty}")
             client.difficulty = new_difficulty
             await mining_set_difficulty(client)
+        except ConnectionError as e:
+            log.warning(f"connection error by {str(e)} on {client}")
+            client.close()
         except Exception:
             log.error("difficulty scheduler exception", exc_info=True)
 

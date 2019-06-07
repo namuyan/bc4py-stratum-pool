@@ -124,7 +124,10 @@ class Client(object):
 
     def close(self):
         self.f_enable = False
-        self.writer.close()
+        try:
+            self.writer.close()
+        except Exception:
+            pass
 
 
 async def response_success(client: Client, result, uuid):

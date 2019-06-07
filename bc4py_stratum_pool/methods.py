@@ -31,6 +31,10 @@ async def mining_authorize(client: Client, params: list, uuid: int):
             log.debug(f"wrong address format hrp:{hrp} ver:{version}")
             await response_success(client, False, uuid)
             return
+        if username is None or password is None:
+            log.debug("authorization account incorrect")
+            await response_failed(client, False, uuid)
+            return
         client.username = username
         client.password = password
         # send job
@@ -174,11 +178,13 @@ async def mining_subscribe(client: Client, params: list, uuid: int):
         ExtraNonce1. - Hex-encoded, per-connection unique string which will be used for creating generation transactions later.
         ExtraNonce2_size. - The number of bytes that the miner users for its ExtraNonce2 counter.
     """
-    client.version = params[0] if 0 < len(params) else None
-    client.subscription_id = a2b_hex(params[1]) if 1 < len(params) else urandom(32)
+    client.version = str(params[0]) if 0 < len(params) else 'unknown'
+    client.subscription_id = a2b_hex(params[1]) if 1 < len(params) else None
     # restore works from close_deque
     for old_client in reversed(closed_deque):
-        if client.subscription_id != old_client.subscription_id:
+        if client.subscription_id is None:
+            continue
+        elif client.subscription_id != old_client.subscription_id:
             continue
         elif client.algorithm != old_client.algorithm:
             continue
@@ -194,6 +200,7 @@ async def mining_subscribe(client: Client, params: list, uuid: int):
             break
     else:
         # setup new client info
+        client.subscription_id = urandom(32)
         client.extranonce_1 = urandom(4)
     extranonce_2_size = 4
     result = [
