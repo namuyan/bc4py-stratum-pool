@@ -113,6 +113,7 @@ async def schedule_dynamic_difficulty(client: Client, schedule_span=90):
     node: short schedule span often cause low-difficulty-share reject
     """
     last_update_bias = 0.0
+    min_difficulty = round(client.difficulty / 1000, 8)
     while client.f_enable:
         try:
             await asyncio.sleep(schedule_span)
@@ -140,6 +141,9 @@ async def schedule_dynamic_difficulty(client: Client, schedule_span=90):
                         continue
                     new_difficulty = round(client.difficulty * max(min(bias, 1.3), 0.7), 8)
             # adjust difficulty
+            if new_difficulty < min_difficulty:
+                log.debug(f"ignore too low difficulty {new_difficulty} < {min_difficulty}")
+                continue
             log.debug(f"adjust difficulty {client.difficulty} -> {new_difficulty}")
             client.difficulty = new_difficulty
             await mining_set_difficulty(client)
