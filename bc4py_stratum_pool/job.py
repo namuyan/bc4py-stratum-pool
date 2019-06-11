@@ -7,14 +7,14 @@ from bc4py_extension import merkleroot_hash, sha256d_hash
 from expiringdict import ExpiringDict
 from binascii import a2b_hex
 from logging import getLogger
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Dict
 from time import time
 import asyncio
 
 loop = asyncio.get_event_loop()
 lock = asyncio.Lock()
 # job will expired in 5min
-jobs = ExpiringDict(max_len=2000, max_age_seconds=300)
+job_dict: Dict[int, 'Job'] = ExpiringDict(max_len=2000, max_age_seconds=300)
 DEFAULT_TARGET = float(0x00000000ffff0000000000000000000000000000000000000000000000000000)
 log = getLogger(__name__)
 
@@ -106,10 +106,10 @@ async def add_new_job(algorithm: int, force_renew=False) -> Job:
     :param force_renew: flag use template method
     """
     async with lock:
-        if len(jobs) == 0:
+        if len(job_dict) == 0:
             job_id = 1
         else:
-            job_id = max(jobs) + 1
+            job_id = max(job_dict) + 1
         # generate new job
         latest_job = get_best_job(algorithm)
         if force_renew or latest_job is None:
@@ -141,20 +141,20 @@ async def add_new_job(algorithm: int, force_renew=False) -> Job:
             ntime = latest_job.ntime + increase_time
             height = latest_job.height
         new_job = Job(job_id, previous_hash, coinbase, unconfirmed, version, bits, ntime, height, algorithm)
-        jobs[job_id] = new_job
+        job_dict[job_id] = new_job
     return new_job
 
 
 def get_job_by_id(job_id: int) -> Optional[Job]:
-    if job_id in jobs:
-        return jobs[job_id]
+    if job_id in job_dict:
+        return job_dict[job_id]
     else:
         return None
 
 
 def get_best_job(algorithm) -> Optional[Job]:
     try:
-        for job in sorted(jobs.values(), key=lambda x: x.create_time, reverse=True):
+        for job in sorted(job_dict.values(), key=lambda x: x.create_time, reverse=True):
             if algorithm == job.algorithm:
                 return job
     except Exception:
