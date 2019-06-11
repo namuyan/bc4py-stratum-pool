@@ -1,5 +1,6 @@
 from bc4py_stratum_pool.ask import *
 from bc4py.config import C
+from bc4py.chain.tx import TX
 from bc4py.chain.block import Block
 from bc4py.chain.utils import bits2target
 from bc4py_extension import merkleroot_hash, sha256d_hash
@@ -44,7 +45,7 @@ class Job(object):
 
     def __repr__(self):
         return f"<Job {hex(self.job_id)} {C.consensus2name[self.algorithm]} " \
-            f"height={self.height} time={self.ntime} diff={self.difficulty} submit:{len(self.submit_hashs)}>"
+            f"height={self.height} time={self.ntime} diff={self.difficulty} txs={len(self.unconfirmed)}>"
 
     @property
     def difficulty(self):
@@ -99,36 +100,56 @@ def get_submit_data(job: Job, extranonce1: bytes, extranonce2: bytes, nonce: byt
     return submit_data, block, f_mined, f_shared
 
 
-async def add_new_job(algorithm: int) -> Job:
+async def add_new_job(algorithm: int, force_renew=False) -> Job:
+    """
+    :param algorithm: specify by algorithm int
+    :param force_renew: flag use template method
+    """
     async with lock:
         if len(jobs) == 0:
             job_id = 1
         else:
             job_id = max(jobs) + 1
-        # get block template
-        params = [{'capabilities': ['coinbasetxn', 'messagenonce']}]
-        template = None
-        while template is None:
-            template = await ask_json_rpc('getblocktemplate', params, 'user', str(algorithm))
-        # new job
-        previous_hash = a2b_hex(template['previousblockhash'])[::-1]
-        coinbase = a2b_hex(template['coinbasetxn']['data'])
-        unconfirmed = [(a2b_hex(tx['hash'])[::-1], a2b_hex(tx['data'])) for tx in template['transactions']]
-        version = template['version']
-        bits = a2b_hex(template['bits'])
-        ntime = template['time']
-        height = template['height']
+        # generate new job
+        latest_job = get_best_job(algorithm)
+        if force_renew or latest_job is None:
+            # get block template
+            params = [{'capabilities': ['coinbasetxn', 'messagenonce']}]
+            template = None
+            while template is None:
+                template = await ask_json_rpc('getblocktemplate', params, 'user', str(algorithm))
+            # new job
+            previous_hash = a2b_hex(template['previousblockhash'])[::-1]
+            coinbase = a2b_hex(template['coinbasetxn']['data'])
+            unconfirmed = [(a2b_hex(tx['hash'])[::-1], a2b_hex(tx['data'])) for tx in template['transactions']]
+            version = template['version']
+            bits = a2b_hex(template['bits'])
+            ntime = template['time']
+            height = template['height']
+        else:
+            # just update blocktime
+            increase_time = int(time() - latest_job.create_time)
+            previous_hash = latest_job.previous_hash
+            coinbase_tx = TX.from_binary(latest_job.coinbase1 + b'\x00' * 8 + latest_job.coinbase2)
+            coinbase_tx.time += increase_time
+            coinbase_tx.deadline += increase_time
+            coinbase_tx.serialize()
+            coinbase = coinbase_tx.b
+            unconfirmed = latest_job.unconfirmed
+            version = latest_job.version
+            bits = latest_job.bits
+            ntime = latest_job.ntime + increase_time
+            height = latest_job.height
         new_job = Job(job_id, previous_hash, coinbase, unconfirmed, version, bits, ntime, height, algorithm)
         jobs[job_id] = new_job
     return new_job
 
 
-async def get_job_by_id(job_id: int) -> Optional[Job]:
-    async with lock:
-        if job_id in jobs:
-            return jobs[job_id]
-        else:
-            return None
+def get_job_by_id(job_id: int) -> Optional[Job]:
+    if job_id in jobs:
+        return jobs[job_id]
+    else:
+        return None
 
 
 def get_best_job(algorithm) -> Optional[Job]:

@@ -5,6 +5,7 @@ from bc4py_stratum_pool.ask import *
 from bc4py_stratum_pool.commands import *
 from bc4py_stratum_pool.account import *
 from bc4py_extension import address2bech
+from bc4py.config import V
 from aiohttp import client_exceptions
 from binascii import a2b_hex
 from os import urandom
@@ -27,7 +28,7 @@ async def mining_authorize(client: Client, params: list, uuid: int):
     try:
         username, password, *others = params
         hrp, version, identifier = address2bech(username)
-        if not (hrp == Const.HRP and version == 0 and len(identifier) == 20):
+        if not (hrp == V.BECH32_HRP and version == 0 and len(identifier) == 20):
             log.debug(f"wrong address format hrp:{hrp} ver:{version}")
             await response_success(client, False, uuid)
             return
@@ -77,7 +78,7 @@ async def mining_get_transactions(client: Client, params: list, uuid: int):
     Server should send back an array with a hexdump of each transaction in the block specified for the given job id.
     """
     job_id, *others = params
-    job = await get_job_by_id(job_id)
+    job = get_job_by_id(job_id)
     if job is None:
         await response_failed(client, JOB_NOT_FOUND, uuid)
     txs = [tx[0][::-1].hex() for tx in job.unconfirmed]
@@ -102,7 +103,7 @@ async def mining_submit(client: Client, params: list, uuid: int):
         extranonce2 = a2b_hex(extranonce2)
         ntime = int.from_bytes(a2b_hex(ntime), 'big')
         nonce = a2b_hex(nonce)[::-1]
-        job = await get_job_by_id(job_id)
+        job = get_job_by_id(job_id)
         # check
         if client.username is None:
             await response_failed(client, UNAUTHORIZED_WORKER, uuid)

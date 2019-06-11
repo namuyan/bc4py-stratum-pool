@@ -43,6 +43,7 @@ from bc4py_stratum_pool.autowork import *
 from bc4py_stratum_pool.stratum import stratum_server
 from bc4py_stratum_pool.web import web_server
 from bc4py_stratum_pool.account import first_init_database
+from bc4py.config import V
 from bc4py.for_debug import set_logger
 from asyncio import get_event_loop, run_coroutine_threadsafe
 from bc4py.config import C
@@ -60,6 +61,7 @@ def main():
         C.BLOCK_X16S_POW,
         C.BLOCK_X11_POW,
     ]
+    V.BECH32_HRP = 'test'
     # hostname
     Const.HOST_NAME = 'pool.example.com'
     # account database control

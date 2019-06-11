@@ -171,7 +171,7 @@ async def auto_block_notify(algorithm_list: list, job_span=60):
         try:
             data = await wait_for(block_notify_que.get(), 1)
             for algorithm in algorithm_list:
-                job = await add_new_job(algorithm)
+                job = await add_new_job(algorithm, force_renew=True)
                 await mining_notify(job, f_clean=True)
             log.info(f"auto notify new block {data['flag']} {data['height']} {data['hash']}")
         except asyncio.TimeoutError:
