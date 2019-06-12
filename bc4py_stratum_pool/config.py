@@ -1,4 +1,6 @@
 from bc4py.config import C
+from typing import Optional, Deque
+from collections import deque, namedtuple
 
 
 class Const:
@@ -9,6 +11,9 @@ class Const:
     DATABASE_PATH = 'pool.db'
     HOST_NAME = 'localhost'
 
+    # how to payout? 'transaction' or 'coinbase'
+    PAYOUT_METHOD: Optional[str] = None
+
 
 # accept lower works divided by co_efficiency
 co_efficiency = {
@@ -17,7 +22,15 @@ co_efficiency = {
     C.BLOCK_X11_POW: 1,
 }
 
+# coinbase distribution payout (option)
+Distribution = namedtuple('Distribution', [
+    'time', 'algorithm', 'distribution'])
+distribution_list: Deque[Distribution] = deque(maxlen=50)
+
+
 __all__ = [
     "Const",
     "co_efficiency",
+    "Distribution",
+    "distribution_list",
 ]

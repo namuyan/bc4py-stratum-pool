@@ -1,4 +1,4 @@
-from bc4py_stratum_pool.config import Const
+from bc4py_stratum_pool.config import *
 from bc4py_stratum_pool.job import *
 from bc4py_stratum_pool.commands import *
 from bc4py_stratum_pool.account import *
@@ -27,6 +27,53 @@ consensus_list = list()
 f_enable = True
 
 
+async def auto_distribution_recode(
+        algorithm_list: list, owner_fee=0.05, job_span=300, search_span=10800):
+    """recode miner's distribution"""
+    assert 0.0 < owner_fee < 1.0
+    assert Const.PAYOUT_METHOD == 'coinbase'
+    max_outputs_num = 255
+    log.info("auto distribution recode start")
+    global f_enable
+    while f_enable:
+        try:
+            await asyncio.sleep(job_span)
+            async with create_db(Const.DATABASE_PATH, strict=True) as db:
+                cur = await db.cursor()
+                end = time()
+                begin = end - search_span
+                for algorithm in algorithm_list:
+                    account_shares = await read_distribution_shares(
+                        cur=cur, begin=begin, end=end, algorithm=algorithm)
+                    if len(account_shares) == 0:
+                        # no miner found, only owner output
+                        distribution = [(None, 1.0)]
+                        distribution_list.append(Distribution(
+                            int(end), algorithm, distribution))
+                        continue
+                    # limit distribution num
+                    over_size = len(account_shares) + 1 - max_outputs_num  # miners + owner - max_num
+                    if 0 < over_size:
+                        order = sorted(account_shares.items(), key=lambda x: x[1], reverse=True)
+                        while 0 < over_size:
+                            account_id, share = order.pop()
+                            del account_shares[account_id]
+                            over_size -= 1
+                            log.debug(f"remove from share id={account_id} share={round(share, 8)}")
+                    # calculate distribution
+                    total_share = sum(account_shares.values()) / (1 - owner_fee)
+                    distribution = [
+                        (await read_account_id2address(cur=cur, account_id=account_id), share / total_share)
+                        for account_id, share in account_shares.items()]
+                    distribution.insert(0, (None, owner_fee))
+                    # recode distribution
+                    distribution_list.append(Distribution(
+                        int(end), algorithm, distribution))
+                    log.debug(f"recode distribution algorithm={algorithm} len={len(distribution)}")
+        except Exception:
+            log.debug("auto_distribution_recode exception", exc_info=True)
+
+
 async def auto_payout_system(
         min_confirm: int, min_amount=5000000000, owner_fee=0.05, ignore_amount=10000, check_span=3600):
     """
@@ -38,6 +85,7 @@ async def auto_payout_system(
     :param check_span: loop check span
     """
     assert 0.0 < owner_fee < 1.0
+    assert Const.PAYOUT_METHOD == 'transaction'
     global f_enable
     while f_enable:
         await asyncio.sleep(check_span)
@@ -240,6 +288,7 @@ __all__ = [
     "block_history_list",
     "tx_history_list",
     "consensus_list",
+    "auto_distribution_recode",
     "auto_payout_system",
     "auto_pool_status_recode",
     "auto_block_notify",

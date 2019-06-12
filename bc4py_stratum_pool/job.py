@@ -1,3 +1,4 @@
+from bc4py_stratum_pool.config import *
 from bc4py_stratum_pool.ask import *
 from bc4py.config import C
 from bc4py.chain.tx import TX
@@ -121,6 +122,30 @@ async def add_new_job(algorithm: int, force_renew=False) -> Job:
             # new job
             previous_hash = a2b_hex(template['previousblockhash'])[::-1]
             coinbase = a2b_hex(template['coinbasetxn']['data'])
+            if Const.PAYOUT_METHOD == 'transaction':
+                pass
+            elif Const.PAYOUT_METHOD == 'coinbase':
+                coinbase_tx = TX.from_binary(coinbase)
+                for dist in reversed(distribution_list):
+                    if dist.algorithm != algorithm:
+                        continue
+                    if len(dist.distribution) < 2:
+                        continue
+                    owner_address, _, reward = coinbase_tx.outputs[0]
+                    coinbase_tx.outputs.clear()
+                    reward -= (len(dist.distribution) - 1) * C.EXTRA_OUTPUT_REWARD_FEE
+                    for address, ratio in dist.distribution:
+                        coinbase_tx.outputs.append(
+                            (address or owner_address, 0, int(reward * ratio)))
+                    coinbase_tx.serialize()
+                    # over write new coinbase
+                    coinbase = coinbase_tx.b
+                    log.debug(f"overwrite new coinbase outputs={len(dist.distribution)}")
+                    break
+                else:
+                    log.debug("no distribution data, no edit coinbase")
+            else:
+                log.warning(f"not found payout method '{Const.PAYOUT_METHOD}'")
             unconfirmed = [(a2b_hex(tx['hash'])[::-1], a2b_hex(tx['data'])) for tx in template['transactions']]
             version = template['version']
             bits = a2b_hex(template['bits'])

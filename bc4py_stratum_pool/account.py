@@ -1,6 +1,6 @@
 from aiocontext import async_contextmanager
 from aiosqlite import connect, Connection, Cursor
-from typing import Optional, List
+from typing import Optional, List, Dict
 from logging import getLogger, INFO
 from binascii import a2b_hex
 from os import urandom
@@ -212,6 +212,18 @@ async def read_account_unpaid_shares(cur: Cursor, begin, end, account_id) -> flo
     return data[0]
 
 
+async def read_distribution_shares(cur: Cursor, begin, end, algorithm) -> Dict[int, float]:
+    """get each account's mining share"""
+    await cur.execute("""
+    SELECT `account_id`, SUM(`share`) FROM `share`
+    WHERE ? <= `time` AND `time` < ? AND `algorithm` = ?
+    GROUP BY `account_id`
+    """, (begin, end, algorithm))
+    data = await cur.fetchall()
+    dist = {account_id: share for account_id, share in data}
+    return dist
+
+
 async def read_related_accounts(cur: Cursor, begin, end) -> List[int]:
     """get unique account's id related share"""
     await cur.execute("""
@@ -350,6 +362,7 @@ __all__ = [
     "insert_new_subscription",
     "read_total_unpaid_shares",
     "read_account_unpaid_shares",
+    "read_distribution_shares",
     "read_related_accounts",
     "read_related_blockhash",
     "read_last_unpaid_time",
