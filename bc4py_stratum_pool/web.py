@@ -3,6 +3,7 @@ from bc4py_stratum_pool.ask import *
 from bc4py_stratum_pool.autowork import *
 from bc4py_stratum_pool.client import client_list
 from bc4py_stratum_pool.stratum import stratum_list
+from bc4py.config import C
 from logging import getLogger
 from aiohttp.web import BaseRequest
 from aiohttp import web
@@ -42,7 +43,7 @@ async def page_dashboard(request: BaseRequest):
             'wait_for_info': True}
     # enable display
     newest = pool_status_list[-1]
-    return {
+    data = {
         'title': 'dashboard',
         'workers': len(client_list),
         'pool_hashrate': newest.pool_hashrate,
@@ -51,6 +52,17 @@ async def page_dashboard(request: BaseRequest):
         'pool_status_list': pool_status_list,
         'consensus_list': consensus_list,
     }
+    # add distribution
+    if 0 < len(distribution_list):
+        distribution = dict()
+        for dist in reversed(distribution_list):
+            if dist.algorithm not in distribution:
+                distribution[dist.algorithm] = dist.distribution
+        distribution = [
+            (C.consensus2name[algorithm], dist)
+            for algorithm, dist in distribution.items()]
+        data['distribution'] = distribution
+    return data
 
 
 @aiohttp_jinja2.template('explorer.html')

@@ -20,7 +20,7 @@
 
 {% macro hashrate_graph(consensus, scene, y_values) -%}
   {% call data_box('border-transparent', 100) -%}
-    <h5>{{ scene }} hashrate status {{ consensus }}</h5>
+    <h5>{{ scene }} hashrate status of {{ consensus }}</h5>
     {% set element_id = consensus + '_' + scene|capitalize %}
     <canvas id="{{ element_id }}" width="auto" height="100"></canvas>
     <script type="text/javascript">
@@ -77,6 +77,51 @@
                               }
                           }
                       }]
+                  }
+              }
+          });
+      }
+    </script>
+  {%- endcall %}
+{%- endmacro %}
+
+{% macro distribution_pie(consensus, dist) -%}
+  {% call data_box('border-transparent', 100) -%}
+    <h5>distribution of {{ consensus }}</h5>
+    {% set element_id = consensus + '_pie' %}
+    <canvas id="{{ element_id }}" width="auto" height="100"></canvas>
+    <script type="text/javascript">
+      {
+          let raw_dist = {{ dist|tojson|safe }};
+          raw_dist.sort(function (a, b) {
+              // sort by ratio big to small
+              if( a[1] < b[1] ) return 1;
+              if( a[1] > b[1] ) return -1;
+              return 0;
+          });
+          let dist = raw_dist.filter(function (element, index) {
+              // limit max display miner 12
+              return element[0] !== null && index < 12;
+          });
+          let data = {
+              datasets: [{
+                  data: dist.map(function (element) {
+                      return Math.round(element[1] * 1000) / 10;
+                  }),
+                  backgroundColor: dist.map(function (ele, index) {
+                      return color_list[index % color_list.length];
+                  })
+              }],
+              labels: dist.map(function (element) {
+                  return element[0];
+              })
+          };
+          new Chart(document.getElementById("{{ element_id }}"), {
+              type: "pie",
+              data: data,
+              options: {
+                  legend: {
+                      position: "right",
                   }
               }
           });
@@ -145,6 +190,7 @@
           {% endfor %}
         </ul>
       {% endcall %}
+
       <!-- network status -->
       {% call data_box('border-transparent', 50) %}
         <h5>network status</h5>
@@ -155,6 +201,17 @@
           {% endfor %}
         </ul>
       {% endcall %}
+
+      <!-- miner's distribution circle graph -->
+      {% if distribution is defined %}
+        {% for consensus, dist in distribution %}
+          {% if 1 < dist|length %}
+            {{ distribution_pie(consensus, dist) }}
+          {% endif %}
+        {% endfor %}
+
+      {% endif %}
+
       <!-- worker status -->
       {% call data_box('border-transparent', 100) %}
         <h5>worker status</h5>

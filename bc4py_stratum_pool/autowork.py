@@ -25,10 +25,9 @@ f_enable = True
 
 
 async def auto_distribution_recode(
-        algorithm_list: list, owner_fee=0.05, job_span=300, search_span=10800):
+        algorithm_list: list, owner_fee=0.05, job_span=60, search_span=10800):
     """recode miner's distribution"""
     assert 0.0 < owner_fee < 1.0
-    assert Const.PAYOUT_METHOD == 'coinbase'
     max_outputs_num = 255
     log.info("auto distribution recode start")
     global f_enable
