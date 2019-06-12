@@ -17,9 +17,6 @@ import asyncio
 
 log = getLogger(__name__)
 loop = asyncio.get_event_loop()
-PoolStatus = namedtuple('PoolStatus', [
-    'time', 'workers', 'pool_hashrate', 'network_hashrate', 'share'])
-pool_status_list: Deque[PoolStatus] = deque(maxlen=60*24)  # for 1 day
 block_notify_que = asyncio.queues.Queue()
 block_history_list = deque(maxlen=50)
 tx_history_list = deque(maxlen=50)
@@ -284,7 +281,6 @@ def close_auto_works():
 
 
 __all__ = [
-    "pool_status_list",
     "block_history_list",
     "tx_history_list",
     "consensus_list",

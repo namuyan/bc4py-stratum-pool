@@ -28,9 +28,17 @@ Distribution = namedtuple('Distribution', [
 distribution_list: Deque[Distribution] = deque(maxlen=50)
 
 
+# pool status recode for a day per a minute
+PoolStatus = namedtuple('PoolStatus', [
+    'time', 'workers', 'pool_hashrate', 'network_hashrate', 'share'])
+pool_status_list: Deque[PoolStatus] = deque(maxlen=60*24)  # for 1 day
+
+
 __all__ = [
     "Const",
     "co_efficiency",
     "Distribution",
     "distribution_list",
+    "PoolStatus",
+    "pool_status_list",
 ]

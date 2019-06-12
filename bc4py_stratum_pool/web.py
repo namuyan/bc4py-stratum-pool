@@ -1,8 +1,8 @@
+from bc4py_stratum_pool.config import *
 from bc4py_stratum_pool.ask import *
 from bc4py_stratum_pool.autowork import *
 from bc4py_stratum_pool.client import client_list
 from bc4py_stratum_pool.stratum import stratum_list
-from bc4py_stratum_pool.config import Const
 from logging import getLogger
 from aiohttp.web import BaseRequest
 from aiohttp import web
@@ -115,9 +115,8 @@ async def page_explorer(request: BaseRequest):
 
 @aiohttp_jinja2.template('connection.html')
 async def page_connection(request: BaseRequest):
-    data = list()
-    for client in client_list:
-        data.append({
+    data = [
+        {
             'version': client.version,
             'username': client.username,
             'consensus': client.consensus_name,
@@ -125,8 +124,8 @@ async def page_connection(request: BaseRequest):
             'hashrate': client.hashrate_str,
             'accept': client.n_accept,
             'reject': client.n_reject,
-            'subscription_id': client.subscription_id.hex(),
-        })
+        }
+        for client in client_list]
     return {
         'title': 'connection',
         'data': data
