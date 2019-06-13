@@ -146,6 +146,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="static/css/sidebar.css">
     <link rel="icon" href="static/favicon.ico">
     <title>{{ title }}</title>
     <!-- Bootstrap -->
@@ -153,6 +154,7 @@
     <!-- ver4: http://www.tohoho-web.com/bootstrap/index.html -->
     <!-- dashboard: https://getbootstrap.com/docs/4.0/examples/dashboard/ -->
     <!-- icon: https://octicons.github.com/ -->
+    <!-- nav: https://bootsnipp.com/snippets/7np2j -->
     <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
     <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
     <!--[if lt IE 9]>
@@ -217,42 +219,61 @@
   <!-- main content -->
   <body>
     <!-- navigate bar -->
-    <nav class="navbar navbar-dark bg-dark flex-md-nowrap sticky-top">
-      <a href="./" class="navbar-brand">bc4py stratum pool</a>
+    <nav class="navbar navbar-expand navbar-dark bg-dark sticky-top">
+      <a href="#menu-toggle" id="menu-toggle" class="navbar-brand">
+        <span class="navbar-toggler-icon"></span>
+      </a>
+      <button class="navbar-toggler" type="button" data-toggle="collapse" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse">
+        <a href="./" class="navbar-brand">bc4py stratum pool</a>
+        <form class="form-inline my-2 my-md-0"> </form>
+      </div>
     </nav>
-    <!-- body content -->
-    <div class="container-fluid">
-      <div class="row">
-        <nav class="col-md-2 d-none d-md-block bg-light sidebar">
-          <div class="sidebar-sticky">
-            <ul class="nav flex-column">
-              {% for item in side_links %}
-                <li class="nav-item">
-                  <a class="nav-link" href="{{ item.url }}">
-                    <img src="static/{{ item.icon }}" height="auto" alt="{{ item.icon }}">
-                    <span class="text-dark">{{ item.message }}</span>
-                  </a>
-                </li>
-              {% endfor %}
-            </ul>
-          </div>
-        </nav>
-        <main class="col-md-9 ml-sm-auto col-lg-10 pt-3 px-4 table-sm" style="min-height: 500px;" role="main">
+
+    <div id="wrapper" class="table-sm">
+      <!-- Sidebar -->
+      <div id="sidebar-wrapper">
+        <ul class="sidebar-nav">
+          {% for item in side_links %}
+            <li class="nav-item">
+              <a class="nav-link" href="{{ item.url }}">
+                <img src="static/{{ item.icon }}" height="auto" alt="{{ item.icon }}">
+                <span class="text-dark">{{ item.message }}</span>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+      <!-- Page Content -->
+      <div id="page-content-wrapper">
+        <div class="container-fluid">
           {% block content %}{% endblock %}
-        </main>
+        </div>
+      </div>
+
+      <!-- footer -->
+      <div class="modal-footer bg-dark">
+        <a class="text-white" href="#">(C) 2019 namuyan</a>
+        <a class="text-white" href="https://twitter.com/namuyan_mine/">twitter</a>
+        <a class="text-white" href="https://github.com/namuyan/">github</a>
       </div>
     </div>
-    <!-- footer -->
-    <footer class="modal-footer bg-dark">
-      <a class="text-white" href="#">(C) 2019 namuyan</a>
-      <a class="text-white" href="https://twitter.com/namuyan_mine/">twitter</a>
-      <a class="text-white" href="https://github.com/namuyan/">github</a>
-    </footer>
+
     <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
     <!-- Include all compiled plugins (below), or include individual files as needed -->
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+    <script>
+        $(function(){
+            $("#menu-toggle").click(function(e) {
+                e.preventDefault();
+                $("#wrapper").toggleClass("toggled");
+            });
+        });
+    </script>
   </body>
 </html>
 
