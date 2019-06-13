@@ -50,7 +50,7 @@ async def mining_notify(job: Job, f_clean=False):
     log.debug(f"broadcast {count} clients")
 
 
-async def client_reconnect(client: Client):
+async def client_reconnect(client: Client, host, port):
     """
     client.reconnect("hostname", port, waittime)
 
@@ -58,7 +58,7 @@ async def client_reconnect(client: Client):
     then connect to the given host/port (which defaults to the current server).
     Note that for security purposes, clients may ignore such requests if the destination is not the same or similar.
     """
-    raise NotImplemented
+    await client.send("client.reconnect", [host, port, 5], None)
 
 
 async def mining_set_difficulty(client: Client):

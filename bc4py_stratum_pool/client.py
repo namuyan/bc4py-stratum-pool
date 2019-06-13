@@ -42,6 +42,12 @@ class Client(object):
         return f"<Client {self.consensus_name} ver='{self.version}' " \
             f"'auth={self.username}:{self.password}' hashrate={self.hashrate_str}>"
 
+    def get_peer_name(self) -> Optional[str]:
+        host = self.writer.transport.get_extra_info('peername')
+        if host is None:
+            return None
+        return host[0]
+
     @property
     def consensus_name(self):
         return C.consensus2name[self.algorithm]

@@ -1,6 +1,7 @@
+from bc4py_stratum_pool.config import Const
 from bc4py_stratum_pool import methods
 from bc4py_stratum_pool.client import *
-from bc4py_stratum_pool.commands import mining_set_difficulty
+from bc4py_stratum_pool.commands import mining_set_difficulty, client_reconnect
 from asyncio.streams import StreamReader, StreamWriter
 from bc4py.config import C
 from typing import List
@@ -40,7 +41,7 @@ def stratum_handle(algorithm: int, difficulty: float, variable_diff=True, submit
         client = Client(reader, writer, algorithm, difficulty, submit_span)
         # register client
         client_list.append(client)
-        log.info("new client join")
+        log.info(f"new client join {client.get_peer_name()}")
         try:
             # note: some miners hate quick difficulty notification
             if variable_diff:
@@ -51,6 +52,12 @@ def stratum_handle(algorithm: int, difficulty: float, variable_diff=True, submit
             prefix = b''
             while client.f_enable:
                 msg, prefix = await get_atomic_message(prefix, reader)
+                # check client status
+                if 100 < client.n_reject and client.n_accept < client.n_reject:
+                    port = writer.transport.get_extra_info('sockname')[1]
+                    await client_reconnect(client, Const.HOST_NAME, port)
+                    log.debug("too match fail, ask client reconnect")
+                    break
                 # receive correct message
                 method = msg.get('method')
                 if method is None:
