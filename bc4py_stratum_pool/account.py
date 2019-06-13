@@ -268,13 +268,13 @@ async def iter_latest_mined_shares(cur: Cursor):
             yield ntime, blockhash
 
 
-async def insert_new_share(cur: Cursor, account_id, algorithm, blockhash, share):
+async def insert_new_share(cur: Cursor, account_id, algorithm, blockhash, share, payout_id):
     """recode account's submit share"""
     await cur.execute("""
     INSERT INTO `share` (
     `time`, `account_id`, `algorithm`, `blockhash`, `share`, `payout_id`
     ) VALUES (?,?,?,?,?,?)
-    """, (time(), account_id, algorithm, blockhash, share, 0))
+    """, (time(), account_id, algorithm, blockhash, share, payout_id))
 
 
 async def update_shares_as_paid(cur: Cursor, payout_id, begin, end, accounts):

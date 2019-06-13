@@ -132,13 +132,15 @@ async def mining_submit(client: Client, params: list, uuid: int):
         # try to submit work
         if f_mined or f_shared:
             client.n_accept += 1
-            client.time_works.append((time(), sum(client.diff_list)/len(client.diff_list)))
+            average_difficulty = sum(client.diff_list)/len(client.diff_list)
+            client.time_works.append((time(), average_difficulty))
             job.submit_hashs.append(block.hash)
             # submit block
             if f_mined:
                 pwd = str(job.algorithm)
                 response = await ask_json_rpc('submitblock', [submit_data.hex()], 'user', pwd)
                 if response:
+                    f_mined = False
                     log.warning(f"failed mine by '{response}'")
                 else:
                     log.info(f"mined yey!! {client.consensus_name} {job.height} diff={client.difficulty}")
@@ -149,10 +151,11 @@ async def mining_submit(client: Client, params: list, uuid: int):
             async with create_db(Const.DATABASE_PATH) as db:
                 cur = await db.cursor()
                 # how many ratio you generate hash (target/work)
-                share = block.work_difficulty / block.difficulty
+                share = average_difficulty / block.difficulty / co_efficiency[client.algorithm]
                 recode_hash = block.hash if f_mined else None
-                await insert_new_share(cur=cur, account_id=client.account_id,
-                                       algorithm=client.algorithm, blockhash=recode_hash, share=share)
+                payout_id = 0 if Const.PAYOUT_METHOD == 'transaction' else -1
+                await insert_new_share(cur=cur, account_id=client.account_id, algorithm=client.algorithm,
+                                       blockhash=recode_hash, share=share, payout_id=payout_id)
                 await db.commit()
         else:
             client.n_reject += 1
