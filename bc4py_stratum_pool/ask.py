@@ -14,7 +14,7 @@ async def ask_get(method: str, params=None):
         async with session.get(Const.REST_API + method, params=params, auth=auth) as response:
             if response.status == 200:
                 data = await response.json()
-                log.debug(f"REST GET method={method} params={params} success={data}")
+                log.debug(f"REST GET method={method} params={params} success")
                 return data
             else:
                 text = await response.text()
