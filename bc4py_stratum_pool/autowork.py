@@ -209,6 +209,7 @@ async def auto_pool_status_recode(job_span=60):
 async def auto_block_notify(algorithm_list: list, job_span=60):
     """auto mining job update when new block receive or job_span passed"""
     global f_enable
+    last_force_update = 0.0
     consensus_list.extend(C.consensus2name[i] for i in algorithm_list)
     log.info(f"start auto notify {consensus_list}")
     while f_enable:
@@ -217,16 +218,22 @@ async def auto_block_notify(algorithm_list: list, job_span=60):
             for algorithm in algorithm_list:
                 job = await add_new_job(algorithm, force_renew=True)
                 await mining_notify(job, f_clean=True)
+            last_force_update = time()
             log.info(f"auto notify new block {data['flag']} {data['height']} {data['hash']}")
         except asyncio.TimeoutError:
             # update old jobs
+            force_renew = False
+            if 180 < time() - last_force_update:
+                last_force_update = time()
+                force_renew = True
+            # throw job
             for algorithm in algorithm_list:
                 try:
                     best_job = get_best_job(algorithm)
                     if best_job is None:
                         continue
-                    if job_span < time() - best_job.create_time:
-                        job = await add_new_job(algorithm)
+                    if force_renew or job_span < time() - best_job.create_time:
+                        job = await add_new_job(algorithm, force_renew=force_renew)
                         await mining_notify(job, f_clean=True)
                         log.debug(f"auto update job {job}")
                 except Exception:
