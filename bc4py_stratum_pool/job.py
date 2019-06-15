@@ -77,9 +77,8 @@ def get_submit_data(job: Job, extranonce1: bytes, extranonce2: bytes, nonce: byt
     f_shared = block.pow_check(int(DEFAULT_TARGET / difficulty))
     log.debug(f"block -> {block.height} {block.hash.hex()}")
     log.debug(f"coinbase -> {coinbase.hex()}")
-    log.debug(f"merkleroot -> {[tx.hex() for tx in merkleroot_list]}")
     log.debug(f"header -> {block.b.hex()}")
-    log.debug(f"merkleroot -> {merkleroot.hex()}")
+    log.debug(f"merkleroot -> {len(merkleroot_list)} {merkleroot.hex()}")
     log.debug(f"workhash -> {block.work_hash.hex()} mined:{f_mined} shared:{f_shared}")
     # generate submit data when mined
     if f_mined:
@@ -87,12 +86,14 @@ def get_submit_data(job: Job, extranonce1: bytes, extranonce2: bytes, nonce: byt
         tx_len = len(job.unconfirmed) + 1
         if tx_len < 0xfd:
             submit_data += tx_len.to_bytes(1, 'little')
-        elif tx_len == 0xfd:
+        elif tx_len <= 0xffff:
             submit_data += b'\xfd' + tx_len.to_bytes(2, 'little')
-        elif tx_len == 0xfe:
+        elif tx_len <= 0xffffffff:
             submit_data += b'\xfe' + tx_len.to_bytes(4, 'little')
-        else:  # == 0xff
-            tx_len += b'\xff' + tx_len.to_bytes(8, 'little')
+        elif tx_len <= 0xffffffffffffffff:  # == 0xff
+            submit_data += b'\xff' + tx_len.to_bytes(8, 'little')
+        else:
+            raise Exception(f"overflowed tx length {tx_len}")
         submit_data += coinbase
         for tx in job.unconfirmed:
             submit_data += tx[1]
