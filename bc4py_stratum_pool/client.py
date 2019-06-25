@@ -10,6 +10,7 @@ import json
 
 loop = asyncio.get_event_loop()
 client_list: List['Client'] = list()  # working clients
+client_lock = asyncio.Lock()
 closed_deque: Deque['Client'] = deque(maxlen=25)  # disconnected clients
 log = getLogger(__name__)
 
@@ -128,12 +129,20 @@ class Client(object):
         self.writer.write(data.encode() + b'\n')
         await self.writer.drain()
 
-    def close(self):
+    async def close(self):
         self.f_enable = False
-        try:
+        if not self.writer.transport.is_closing():
             self.writer.close()
-        except Exception:
-            pass
+        async with client_lock:
+            if self in client_list:
+                client_list.remove(self)
+
+
+async def create_client(*args):
+    client = Client(*args)
+    async with client_lock:
+        client_list.append(client)
+    return client
 
 
 async def response_success(client: Client, result, uuid):
@@ -149,18 +158,24 @@ async def response_failed(client: Client, error, uuid):
 
 
 async def broadcast_clients(method, params, algorithm):
-    data = json.dumps({'method': method, 'params': params, 'id': None})
-    data = data.encode() + b'\n'
-    count = 0
-    for client in client_list:
-        if client.algorithm == algorithm:
-            try:
-                client.writer.write(data)
-                loop.call_soon(client.writer.drain)
-                count += 1
-            except ConnectionError:
-                continue
-    return count
+    try:
+        data = json.dumps({
+            'method': method,
+            'params': params,
+            'id': None,
+        })
+        data = data.encode() + b'\n'
+        count = 0
+        async with client_lock:
+            for client in client_list:
+                if client.algorithm == algorithm:
+                    client.writer.write(data)
+                    await client.writer.drain()
+                    count += 1
+        return count
+    except Exception:
+        log.error("broadcast_clients exception", exc_info=True)
+        return 0
 
 
 # error response
@@ -176,6 +191,7 @@ __all__ = [
     "client_list",
     "closed_deque",
     "Client",
+    "create_client",
     "response_success",
     "response_failed",
     "broadcast_clients",

@@ -38,9 +38,7 @@ def stratum_handle(algorithm: int, difficulty: float, variable_diff=True, submit
     """
     async def handle(reader: StreamReader, writer: StreamWriter):
         # create new client
-        client = Client(reader, writer, algorithm, difficulty, submit_span)
-        # register client
-        client_list.append(client)
+        client = await create_client(reader, writer, algorithm, difficulty, submit_span)
         log.info(f"new client join {client.get_peer_name()}")
         try:
             # note: some miners hate quick difficulty notification
@@ -85,11 +83,9 @@ def stratum_handle(algorithm: int, difficulty: float, variable_diff=True, submit
         except Exception:
             log.error("unexpected exception", exc_info=True)
         # close
-        client_list.remove(client)
-        # store
         if client.subscription_id:
             closed_deque.append(client)
-        client.close()
+        await client.close()
         log.info(f"close and remove {client}")
     # wrap handle
     return handle
@@ -156,7 +152,7 @@ async def schedule_dynamic_difficulty(client: Client, schedule_span=90):
             await mining_set_difficulty(client)
         except ConnectionError as e:
             log.warning(f"connection error by {str(e)} on {client}")
-            client.close()
+            await client.close()
         except Exception:
             log.error("difficulty scheduler exception", exc_info=True)
 
