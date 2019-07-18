@@ -110,7 +110,7 @@ async def auto_payout_system(
                         end = float(ntime)
                     if block['f_orphan']:
                         continue
-                    address, coin_id, amount = block['txs'][0]['outputs'][0]
+                    _, _, amount = block['txs'][0]['outputs'][0]
                     total_mined_amount += amount
                     total_block_count += 1
                 # check

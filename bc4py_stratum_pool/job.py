@@ -4,7 +4,8 @@ from bc4py.config import C
 from bc4py.chain.tx import TX
 from bc4py.chain.block import Block
 from bc4py.chain.utils import bits2target
-from bc4py_extension import merkleroot_hash, sha256d_hash
+from bc4py.chain.workhash import update_work_hash
+from bc4py_extension import merkleroot_hash, sha256d_hash, PyAddress
 from expiringdict import ExpiringDict
 from binascii import a2b_hex
 from logging import getLogger
@@ -73,6 +74,7 @@ def get_submit_data(job: Job, extranonce1: bytes, extranonce2: bytes, nonce: byt
         'flag': job.algorithm,
     })
     # check fulfill target or share
+    update_work_hash(block)
     f_mined = block.pow_check()
     f_shared = block.pow_check(int(DEFAULT_TARGET / difficulty))
     log.debug(f"block -> {block.height} {block.hash.hex()}")
@@ -136,8 +138,10 @@ async def add_new_job(algorithm: int, force_renew=False) -> Job:
                     coinbase_tx.outputs.clear()
                     reward -= (len(dist.distribution) - 1) * C.EXTRA_OUTPUT_REWARD_FEE
                     for address, ratio in dist.distribution:
-                        coinbase_tx.outputs.append(
-                            (address or owner_address, 0, int(reward * ratio)))
+                        if address is None:
+                            coinbase_tx.outputs.append((owner_address, 0, int(reward * ratio)))
+                        else:
+                            coinbase_tx.outputs.append((PyAddress.from_string(address), 0, int(reward * ratio)))
                     coinbase_tx.serialize()
                     # over write new coinbase
                     coinbase = coinbase_tx.b

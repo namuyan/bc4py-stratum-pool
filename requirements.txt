@@ -5,4 +5,4 @@ jinja2-time
 jinja2
 expiringdict
 asyncio-contextmanager
-bc4py_extension
+bc4py_extension==0.1.6
