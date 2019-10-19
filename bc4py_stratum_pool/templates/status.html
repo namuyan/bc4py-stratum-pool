@@ -1,0 +1,50 @@
+{% extends "layout.html" %}
+
+{% block content %}
+  {% if system_info and chain_info  %}
+    <div class="comment-box">
+      <div class="comment-box-title">node status</div>
+      <table class="table">
+        {% for key, value in system_info.items() %}
+          <tr>
+            <th>{{ key }}</th><td>{{ value }}</td>
+          </tr>
+        {% endfor %}
+      </table>
+    </div>
+
+    <div class="comment-box">
+      <div class="comment-box-title">best block</div>
+      {{ render_block(chain_info.best) }}
+    </div>
+
+    <div class="comment-box">
+      <div class="comment-box-title">mining info</div>
+      <table class="table">
+        {% for consensus, data in chain_info.mining.items() %}
+          <tr>
+            <th colspan="3">{{ consensus }}</th>
+          </tr>
+          {% for key, value in data.items() %}
+            <tr>
+              <td>*</td><th>{{ key }}</th><td>{{ value }}</td>
+            </tr>
+          {% endfor %}
+        {% endfor %}
+      </table>
+    </div>
+
+    <div class="comment-box">
+      <div class="comment-box-title">others</div>
+      <table class="table">
+        <tr><th>money supply</th><td>{{ chain_info.money_supply }}</td></tr>
+        <tr><th>total supply</th><td>{{ chain_info.total_supply }}</td></tr>
+        <tr><th>checkpoint height</th><td>{{ chain_info.checkpoint.height }}</td></tr>
+        <tr><th>checkpoint hash</th><td>{{ chain_info.checkpoint.blockhash }}</td></tr>
+      </table>
+    </div>
+
+  {% else %}
+    <b>cannot get data from API, please wait...</b>
+  {% endif %}
+{% endblock %}

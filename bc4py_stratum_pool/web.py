@@ -17,6 +17,7 @@ import os
 loop = asyncio.get_event_loop()
 log = getLogger(__name__)
 DISABLE_EXPLORER = False
+cashe = dict()
 
 
 @aiohttp_jinja2.template('index.html')
@@ -144,6 +145,27 @@ async def page_connection(request: Request):
     }
 
 
+@aiohttp_jinja2.template('status.html')
+async def page_status(request: Request):
+    try:
+        status_time = cashe.get('status_time')
+        if status_time is None or 10.0 < time() - status_time:
+            system_info = await ask_get('/public/getsysteminfo')
+            chain_info = await ask_get('/public/getchaininfo')
+            cashe['system_info'] = system_info
+            cashe['chain_info'] = chain_info
+            cashe['status_time'] = time()
+        else:
+            system_info = cashe['system_info']
+            chain_info = cashe['chain_info']
+        return {
+            'system_info': system_info,
+            'chain_info': chain_info,
+        }
+    except Exception as e:
+        return {}
+
+
 @aiohttp_jinja2.template('terms.html')
 async def page_terms(request: Request):
     return {'title': 'Terms&Conditions'}
@@ -190,6 +212,7 @@ async def web_server(port, host='0.0.0.0', ssl_context=None):
         app.router.add_get('/dashboard.html', page_dashboard)
         app.router.add_get('/explorer.html', page_explorer)
         app.router.add_get('/connection.html', page_connection)
+        app.router.add_get('/status.html', page_status)
         app.router.add_get('/terms.html', page_terms)
         app.router.add_static('/static', static_path)
         # start server
