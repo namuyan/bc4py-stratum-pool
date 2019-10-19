@@ -20,7 +20,7 @@ except (IOError, UnicodeError):
 
 setup(
     name="bc4py-stratum-pool",
-    version='0.0.1-alpha',
+    version='0.0.2-alpha',
     url='https://github.com/namuyan/bc4py-stratum-pool',
     author='namuyan',
     description='python3 pool program for bc4py',
