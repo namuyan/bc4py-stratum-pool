@@ -9,9 +9,8 @@ getLogger('aiohttp').setLevel(WARNING)
 
 async def ask_get(method: str, params=None):
     """ask node by GET method"""
-    auth = None if method.startswith('/public/') else aiohttp.BasicAuth(Const.REST_USER, Const.REST_PWD)
     async with aiohttp.ClientSession() as session:
-        async with session.get(Const.REST_API + method, params=params, auth=auth) as response:
+        async with session.get(Const.REST_API + method, params=params) as response:
             if response.status == 200:
                 data = await response.json()
                 log.debug(f"REST GET method={method} params={params} success")
@@ -24,9 +23,8 @@ async def ask_get(method: str, params=None):
 
 async def ask_post(method, json=None):
     """ask node by POST method"""
-    auth = None if method.startswith('/public/') else aiohttp.BasicAuth(Const.REST_USER, Const.REST_PWD)
     async with aiohttp.ClientSession() as session:
-        async with session.post(Const.REST_API + method, json=json, auth=auth) as response:
+        async with session.post(Const.REST_API + method, json=json) as response:
             if response.status == 200:
                 data = await response.json()
                 log.debug(f"REST POST method={method} json={json} success={data}")
