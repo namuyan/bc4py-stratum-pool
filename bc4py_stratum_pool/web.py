@@ -5,7 +5,7 @@ from bc4py_stratum_pool.client import client_list
 from bc4py_stratum_pool.stratum import stratum_list
 from bc4py.config import C
 from logging import getLogger
-from aiohttp.web import BaseRequest
+from aiohttp.web import Request
 from aiohttp import web
 from jinja2 import FileSystemLoader, FileSystemBytecodeCache
 import aiohttp_jinja2
@@ -20,14 +20,14 @@ DISABLE_EXPLORER = False
 
 
 @aiohttp_jinja2.template('index.html')
-async def page_index(request: BaseRequest):
+async def page_index(request: Request):
     return {
         'title': 'main page'
     }
 
 
 @aiohttp_jinja2.template('started.html')
-async def page_started(request: BaseRequest):
+async def page_started(request: Request):
     return {
         'title': 'getting started',
         'hostname': Const.HOST_NAME,
@@ -36,7 +36,7 @@ async def page_started(request: BaseRequest):
 
 
 @aiohttp_jinja2.template('dashboard.html')
-async def page_dashboard(request: BaseRequest):
+async def page_dashboard(request: Request):
     if len(block_history_list) == 0 or len(pool_status_list) == 0:
         return {
             'title': 'dashboard',
@@ -66,7 +66,7 @@ async def page_dashboard(request: BaseRequest):
 
 
 @aiohttp_jinja2.template('explorer.html')
-async def page_explorer(request: BaseRequest):
+async def page_explorer(request: Request):
     # At the beginning, history list is empty
     if not DISABLE_EXPLORER and 'blockhash' in request.query:
         try:
@@ -126,7 +126,7 @@ async def page_explorer(request: BaseRequest):
 
 
 @aiohttp_jinja2.template('connection.html')
-async def page_connection(request: BaseRequest):
+async def page_connection(request: Request):
     data = [
         {
             'version': client.version,
@@ -145,12 +145,12 @@ async def page_connection(request: BaseRequest):
 
 
 @aiohttp_jinja2.template('terms.html')
-async def page_terms(request: BaseRequest):
+async def page_terms(request: Request):
     return {'title': 'Terms&Conditions'}
 
 
 async def error_middleware(app, handler):
-    async def middleware_handler(request: BaseRequest):
+    async def middleware_handler(request: Request):
         try:
             return await handler(request)
         except BlockExplorerError as e:

@@ -5,8 +5,7 @@ from bc4py_stratum_pool.account import *
 from bc4py_stratum_pool.client import client_list
 from bc4py_stratum_pool.ask import *
 from bc4py.config import C
-from collections import deque, namedtuple, defaultdict
-from typing import Deque
+from collections import deque, defaultdict
 from logging import getLogger
 from asyncio import wait_for
 from binascii import a2b_hex
@@ -249,35 +248,32 @@ async def auto_block_notify(algorithm_list: list, job_span=60):
 async def auto_notify_by_ws(dest='/public/ws'):
     """receive new block by websocket"""
     global f_enable
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.ws_connect(Const.REST_API + dest) as ws:
-                log.info(f"connect websocket to {Const.REST_API}{dest}")
-                while not ws.closed and f_enable:
-                    try:
-                        data: dict = await ws.receive_json(timeout=1)
-                        if data['cmd'] == 'Block':
-                            await block_notify_que.put(data['data'])
-                            block_history_list.append(data['data'])
-                        if data['cmd'] == 'TX':
-                            tx_history_list.append(data['data'])
-                    except asyncio.TimeoutError:
-                        pass
-                    except TypeError as e:
-                        log.debug(f"type error {e}")
-                # reconnect process
-                if f_enable:
-                    await asyncio.sleep(10)
-                    asyncio.run_coroutine_threadsafe(auto_notify_by_ws(dest=dest), loop)
-                    log.info("try to reconnect websocket")
-                # close process
-                try:
-                    await ws.close()
-                except Exception:
-                    pass
-                log.info("close websocket")
-    except Exception:
-        log.error('auto_notify_by_ws exception', exc_info=True)
+    while f_enable:
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.ws_connect(Const.REST_API + dest) as ws:
+                    log.info(f"connect websocket to {Const.REST_API}{dest}")
+                    while not ws.closed:
+                        if not f_enable:
+                            log.info("close websocket by signal")
+                            return
+                        try:
+                            data: dict = await ws.receive_json(timeout=1)
+                            if data['cmd'] == 'Block':
+                                await block_notify_que.put(data['data'])
+                                block_history_list.append(data['data'])
+                            if data['cmd'] == 'TX':
+                                tx_history_list.append(data['data'])
+                        except asyncio.TimeoutError:
+                            pass
+                        except TypeError as e:
+                            log.debug(f"type error {e}")
+            # closed
+            log.info("try to reconnect websocket")
+            await asyncio.sleep(10.0)
+        except Exception:
+            log.error('auto_notify_by_ws exception', exc_info=True)
+            await asyncio.sleep(10.0)
 
 
 def close_auto_works():
