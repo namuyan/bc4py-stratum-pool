@@ -37,8 +37,8 @@
     <div class="comment-box">
       <div class="comment-box-title">others</div>
       <table class="table">
-        <tr><th>money supply</th><td>{{ chain_info.money_supply }}</td></tr>
-        <tr><th>total supply</th><td>{{ chain_info.total_supply }}</td></tr>
+        <tr><th>money supply</th><td>{{ chain_info.money_supply }} ({{ '%0.2f' % (chain_info.money_supply/chain_info.total_supply*100)|float }}%)</td></tr>
+        <tr><th>total supply</th><td>{{ chain_info.total_supply }} (100.00%)</td></tr>
         <tr><th>checkpoint height</th><td>{{ chain_info.checkpoint.height }}</td></tr>
         <tr><th>checkpoint hash</th><td>{{ chain_info.checkpoint.blockhash }}</td></tr>
       </table>
