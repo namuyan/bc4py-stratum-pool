@@ -18,8 +18,9 @@ environment
 
 install
 ----
-Premise: The explanation is based by using Ubuntu or other Linux  
-Premise: You have finished setup bc4py node and full synced  
+* `coinbase payout mode` recommended, you don't worry about confirmation.
+* The explanation is based by using Ubuntu or other Linux.
+* You have finished setup bc4py node and full synced.
 ```bash
 # into blockchain-py
 cd ~/blockchain-py/
@@ -101,7 +102,7 @@ EOS
 python3 start_coinbase_mode.py
 ```
 
-You can select `transaction payout mode` it looks like NOMP pool.
+* **(not recommended)** You can select `transaction payout mode` it looks like NOMP pool.
 ```bash
 cat << EOS > start_transaction_mode.py
 #!/user/env python3
@@ -177,19 +178,7 @@ curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly
 
 thanks
 ----
-* [octicons](https://octicons.github.com/)
-* [Jquery](https://jquery.com/download/)
-* [Bootstrap4.3.1](https://github.com/twbs/bootstrap)
-* [Chart.js](https://www.chartjs.org/)
-* [aiosqlite](https://github.com/jreese/aiosqlite)
-* [aiohttp](https://aiohttp.readthedocs.io/en/stable/)
-* [aiohttp-jinja2](https://github.com/aio-libs/aiohttp-jinja2)
-* [jinja2-time](https://github.com/hackebrot/jinja2-time)
-* [Jinja2](http://jinja.pocoo.org/docs/2.10/)
-* [expiringdict](https://github.com/mailgun/expiringdict)
-* [asyncio-contextmanager](https://github.com/sashgorokhov/asyncio-contextmanager)
-* [bc4py](http://github.com/namuyan/bc4py)
-* [bc4py-extension](http://github.com/namuyan/bc4py_extension)
+[requirements.txt](requirements.txt)
 
 licence
 ---
