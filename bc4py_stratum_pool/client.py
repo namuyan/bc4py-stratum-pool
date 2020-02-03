@@ -157,25 +157,28 @@ async def response_failed(client: Client, error, uuid):
     await client.writer.drain()
 
 
-async def broadcast_clients(method, params, algorithm):
-    try:
-        data = json.dumps({
-            'method': method,
-            'params': params,
-            'id': None,
-        })
-        data = data.encode() + b'\n'
-        count = 0
-        async with client_lock:
-            for client in client_list:
+async def broadcast_clients(method, params, algorithm) -> int:
+    """broadcast to ALL miners with a specific algorithm"""
+    data = json.dumps({
+        'method': method,
+        'params': params,
+        'id': None,
+    })
+    data = data.encode() + b'\n'
+    count = 0
+    async with client_lock:
+        for client in client_list:
+            try:
                 if client.algorithm == algorithm:
                     client.writer.write(data)
                     await client.writer.drain()
                     count += 1
-        return count
-    except Exception:
-        log.error("broadcast_clients exception", exc_info=True)
-        return 0
+            except ConnectionResetError:
+                # warning: don't remove from client_list
+                log.debug(f"broadcast: connection reset by {client}")
+            except Exception:
+                log.error("broadcast_clients exception", exc_info=True)
+    return count
 
 
 # error response
