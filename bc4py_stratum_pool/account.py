@@ -34,7 +34,7 @@ async def create_db(path, strict=False) -> Connection:
     """
     conn = await connect(path, timeout=120)
 
-    # cashe size, default 2000
+    # cache size, default 2000
     # conn.execute("PRAGMA cache_size = 4000")
 
     # journal mode

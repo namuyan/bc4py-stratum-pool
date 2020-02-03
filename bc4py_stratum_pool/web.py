@@ -17,7 +17,7 @@ import os
 loop = asyncio.get_event_loop()
 log = getLogger(__name__)
 DISABLE_EXPLORER = False
-cashe = dict()
+cache = dict()
 
 
 @aiohttp_jinja2.template('index.html')
@@ -148,16 +148,16 @@ async def page_connection(request: Request):
 @aiohttp_jinja2.template('status.html')
 async def page_status(request: Request):
     try:
-        status_time = cashe.get('status_time')
+        status_time = cache.get('status_time')
         if status_time is None or 10.0 < time() - status_time:
             system_info = await ask_get('/public/getsysteminfo')
             chain_info = await ask_get('/public/getchaininfo')
-            cashe['system_info'] = system_info
-            cashe['chain_info'] = chain_info
-            cashe['status_time'] = time()
+            cache['system_info'] = system_info
+            cache['chain_info'] = chain_info
+            cache['status_time'] = time()
         else:
-            system_info = cashe['system_info']
-            chain_info = cashe['chain_info']
+            system_info = cache['system_info']
+            chain_info = cache['chain_info']
         return {
             'system_info': system_info,
             'chain_info': chain_info,
@@ -195,14 +195,14 @@ async def web_server(port, host='0.0.0.0', ssl_context=None):
     try:
         app = web.Application(middlewares=[error_middleware])
         web_root_dir = os.path.split(os.path.abspath(__file__))[0]
-        cashe_path = os.path.join(web_root_dir, '.cashe')
+        cache_path = os.path.join(web_root_dir, '.cache')
         static_path = os.path.join(web_root_dir, 'templates', 'static')
-        if not os.path.exists(cashe_path):
-            os.mkdir(cashe_path)
+        if not os.path.exists(cache_path):
+            os.mkdir(cache_path)
         aiohttp_jinja2.setup(
             app=app,
             loader=FileSystemLoader(os.path.join(web_root_dir, 'templates')),
-            bytecode_cache=FileSystemBytecodeCache(directory=cashe_path, pattern='%s.cashe'),
+            bytecode_cache=FileSystemBytecodeCache(directory=cache_path, pattern='%s.cache'),
             extensions=['jinja2_time.TimeExtension'],
         )
         # add routes
