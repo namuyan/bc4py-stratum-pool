@@ -233,8 +233,14 @@
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse">
-        <a href="./" class="navbar-brand">bc4py stratum pool</a>
-        <form class="form-inline my-2 my-md-0"> </form>
+        <a href="./" class="navbar-brand">
+            bc4py stratum pool
+        {% if is_online %}
+          <span class="badge badge-success">online</span>
+        {% else %}
+          <span class="badge badge-danger">offline</span>
+        {% endif %}
+        </a>
       </div>
     </nav>
 

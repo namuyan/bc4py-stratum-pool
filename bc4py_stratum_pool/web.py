@@ -20,10 +20,28 @@ DISABLE_EXPLORER = False
 cache = dict()
 
 
+async def check_node_status() -> bool:
+    """update status cache & return is_online"""
+    try:
+        status_time = cache.get('status_time')
+        ntime = time()
+        if status_time is None or 30.0 < ntime - status_time:
+            cache['status_time'] = time()
+            cache['system_info'] = await ask_get('/public/getsysteminfo')
+            cache['chain_info'] = await ask_get('/public/getchaininfo')
+            cache['is_online'] = True
+            return True
+        else:
+            return cache.get('is_online', False)
+    except Exception:
+        return False
+
+
 @aiohttp_jinja2.template('index.html')
 async def page_index(request: Request):
     return {
-        'title': 'main page'
+        'title': 'main page',
+        'is_online': await check_node_status(),
     }
 
 
@@ -31,6 +49,7 @@ async def page_index(request: Request):
 async def page_started(request: Request):
     return {
         'title': 'getting started',
+        'is_online': await check_node_status(),
         'hostname': Const.HOST_NAME,
         'stratum': stratum_list
     }
@@ -41,11 +60,14 @@ async def page_dashboard(request: Request):
     if len(block_history_list) == 0 or len(pool_status_list) == 0:
         return {
             'title': 'dashboard',
-            'wait_for_info': True}
+            'is_online': await check_node_status(),
+            'wait_for_info': True,
+        }
     # enable display
     newest = pool_status_list[-1]
     data = {
         'title': 'dashboard',
+        'is_online': await check_node_status(),
         'workers': len(client_list),
         'pool_hashrate': newest.pool_hashrate,
         'network_hashrate': newest.network_hashrate,
@@ -80,8 +102,10 @@ async def page_explorer(request: Request):
                 block['title'] = 'block info'
                 return {
                     'title': 'explorer -block-',
+                    'is_online': await check_node_status(),
                     'block_info': block,
-                    'best_height': best_height}
+                    'best_height': best_height,
+                }
             else:
                 raise BlockExplorerError(block)
         except (ValueError, TypeError, IndexError, ConnectionError) as e:
@@ -96,8 +120,10 @@ async def page_explorer(request: Request):
                 block['title'] = 'block info'
                 return {
                     'title': 'explorer -block-',
+                    'is_online': await check_node_status(),
                     'block_info': block,
-                    'best_height': best_height}
+                    'best_height': best_height,
+                }
             else:
                 raise BlockExplorerError(block)
         except (ValueError, TypeError, IndexError, ConnectionError) as e:
@@ -112,6 +138,7 @@ async def page_explorer(request: Request):
                 best_height = block_history_list[-1]['height'] if 0 < len(block_history_list) else None
                 return {
                     'title': 'explorer -tx-',
+                    'is_online': await check_node_status(),
                     'tx_info': tx,
                     'best_height': best_height}
             else:
@@ -121,9 +148,11 @@ async def page_explorer(request: Request):
     else:
         return {
             'title': 'explorer -randing-',
+            'is_online': await check_node_status(),
             'blocks': list(reversed(block_history_list)),
             'txs': list(reversed(tx_history_list)),
-            'time': int(time())}
+            'time': int(time()),
+        }
 
 
 @aiohttp_jinja2.template('connection.html')
@@ -141,34 +170,27 @@ async def page_connection(request: Request):
         for client in client_list]
     return {
         'title': 'connection',
+        'is_online': await check_node_status(),
         'data': data
     }
 
 
 @aiohttp_jinja2.template('status.html')
 async def page_status(request: Request):
-    try:
-        status_time = cache.get('status_time')
-        if status_time is None or 10.0 < time() - status_time:
-            system_info = await ask_get('/public/getsysteminfo')
-            chain_info = await ask_get('/public/getchaininfo')
-            cache['system_info'] = system_info
-            cache['chain_info'] = chain_info
-            cache['status_time'] = time()
-        else:
-            system_info = cache['system_info']
-            chain_info = cache['chain_info']
-        return {
-            'system_info': system_info,
-            'chain_info': chain_info,
-        }
-    except Exception as e:
-        return {}
+    return {
+        'title': 'node status',
+        'is_online': await check_node_status(),
+        'system_info': cache.get('system_info'),
+        'chain_info': cache.get('chain_info'),
+    }
 
 
 @aiohttp_jinja2.template('terms.html')
 async def page_terms(request: Request):
-    return {'title': 'Terms&Conditions'}
+    return {
+        'title': 'Terms&Conditions',
+        'is_online': await check_node_status(),
+    }
 
 
 async def error_middleware(app, handler):
@@ -178,12 +200,14 @@ async def error_middleware(app, handler):
         except BlockExplorerError as e:
             context = {
                 'title': 'block explorer error',
+                'is_online': await check_node_status(),
                 'status': 400,  # bad request
                 'message': str(e)}
             return aiohttp_jinja2.render_template('error.html', request, context)
         except web.HTTPException as e:
             context = {
                 'title': 'error page',
+                'is_online': await check_node_status(),
                 'status': e.status,
                 'message': e.text}
             return aiohttp_jinja2.render_template('error.html', request, context)
