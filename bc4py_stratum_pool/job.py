@@ -26,7 +26,18 @@ class Job(object):
                  "unconfirmed", "version", "bits", "ntime", "height",
                  "algorithm", "submit_hashs", "create_time")
 
-    def __init__(self, job_id, previous_hash, coinbase, unconfirmed, version, bits, ntime, height, algorithm):
+    def __init__(
+            self,
+            job_id: int,
+            previous_hash: bytes,
+            coinbase: bytes,
+            unconfirmed: List[Tuple[bytes, bytes]],
+            version: int,
+            bits: bytes,
+            ntime: int,
+            height: int,
+            algorithm: int
+    ) -> None:
         """
         coinbase: [coinbase1]-[extranonce1 4bytes]-[extranonce2 4bytes]-[dummy 4bytes = coinbase2]
         unconfirmed: [(hash, data), ...]
@@ -36,26 +47,26 @@ class Job(object):
         self.previous_hash: bytes = previous_hash
         self.coinbase1: bytes = coinbase[:-8]
         self.coinbase2 = b''  # coinbase[-0:]
-        self.unconfirmed: List[Tuple[bytes, bytes]] = unconfirmed
+        self.unconfirmed = unconfirmed
         self.version = version
         self.bits: bytes = bits
         self.ntime: int = ntime
         self.height: int = height
         self.algorithm: int = algorithm
-        self.submit_hashs = list()
+        self.submit_hashs: List[bytes] = list()
         self.create_time = time()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<Job {hex(self.job_id)} {C.consensus2name[self.algorithm]} " \
             f"height={self.height} time={self.ntime} diff={self.difficulty} txs={len(self.unconfirmed)}>"
 
     @property
-    def difficulty(self):
+    def difficulty(self) -> float:
         return round(DEFAULT_TARGET / bits2target(int.from_bytes(self.bits, 'big')), 8)
 
 
 def get_submit_data(job: Job, extranonce1: bytes, extranonce2: bytes, nonce: bytes, difficulty: float) \
-        -> (Optional[bytes], bytes, bool, bool):
+        -> Tuple[Optional[bytes], Block, bool, bool]:
     """check client submit data and generate node submit data"""
     assert len(extranonce1) == 4 and len(extranonce2) == 4
     coinbase = job.coinbase1 + extranonce1 + extranonce2 + job.coinbase2
@@ -104,7 +115,7 @@ def get_submit_data(job: Job, extranonce1: bytes, extranonce2: bytes, nonce: byt
     return submit_data, block, f_mined, f_shared
 
 
-async def add_new_job(algorithm: int, force_renew=False) -> Job:
+async def add_new_job(algorithm: int, force_renew: bool = False) -> Job:
     """
     :param algorithm: specify by algorithm int
     :param force_renew: flag use template method
@@ -182,7 +193,7 @@ def get_job_by_id(job_id: int) -> Optional[Job]:
         return None
 
 
-def get_best_job(algorithm) -> Optional[Job]:
+def get_best_job(algorithm: int) -> Optional[Job]:
     try:
         for job in sorted(job_dict.values(), key=lambda x: x.create_time, reverse=True):
             if algorithm == job.algorithm:

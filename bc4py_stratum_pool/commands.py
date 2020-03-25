@@ -1,6 +1,7 @@
 from bc4py_stratum_pool.client import *
 from bc4py_stratum_pool.job import *
 from bc4py_extension import sha256d_hash
+from typing import List
 from more_itertools import chunked
 from logging import getLogger
 
@@ -10,7 +11,7 @@ log = getLogger(__name__)
 """
 
 
-async def client_show_message(client: Client):
+async def client_show_message(client: Client) -> None:
     """
     client.show_message("human-readable message")
 
@@ -19,7 +20,7 @@ async def client_show_message(client: Client):
     await client.send('client.show_message', ["hello world message"], None)
 
 
-async def mining_notify(job: Job, f_clean=False):
+async def mining_notify(job: Job, f_clean: bool = False) -> None:
     """
     mining.notify(...)
 
@@ -50,7 +51,7 @@ async def mining_notify(job: Job, f_clean=False):
     log.debug(f"broadcast {count} clients")
 
 
-async def client_reconnect(client: Client, host, port):
+async def client_reconnect(client: Client, host: str, port: int) -> None:
     """
     client.reconnect("hostname", port, waittime)
 
@@ -61,7 +62,7 @@ async def client_reconnect(client: Client, host, port):
     await client.send("client.reconnect", [host, port, 5], None)
 
 
-async def mining_set_difficulty(client: Client):
+async def mining_set_difficulty(client: Client) -> None:
     """
     mining.set_difficulty(difficulty)
 
@@ -73,7 +74,7 @@ async def mining_set_difficulty(client: Client):
     await client.send('mining.set_difficulty', [client.difficulty], None)
 
 
-async def mining_set_extranonce(client: Client):
+async def mining_set_extranonce(client: Client) -> None:
     """
     mining.set_extranonce("extranonce1", extranonce2_size)
 
@@ -82,7 +83,7 @@ async def mining_set_extranonce(client: Client):
     raise NotImplemented
 
 
-def swap_pre_processed_sha2(h):
+def swap_pre_processed_sha2(h: bytes) -> bytes:
     """pre-processed SHA-2 chunks"""
     r = b''
     for i in reversed(range(0, 32, 4)):
@@ -90,7 +91,7 @@ def swap_pre_processed_sha2(h):
     return r[::-1]
 
 
-def pre_merkleroot(tree: list):
+def pre_merkleroot(tree: List[bytes]) -> List[bytes]:
     """generate merkleroot without coinbase tx"""
     tree = tree.copy()
     mask_index = 1
@@ -110,7 +111,7 @@ def pre_merkleroot(tree: list):
     return tree
 
 
-def test_pre_merkleroot():
+def test_pre_merkleroot() -> None:
     from binascii import a2b_hex
     # block height: 1580725
     # block hash  : 00000003b59fa6638b21cc8bbf9c96b8a72f882440df5a13ce9ede18e9481ae9

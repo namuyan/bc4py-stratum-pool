@@ -175,6 +175,7 @@ note
 curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly
 ```
 * [How to setup testnet node](https://hackmd.io/s/SJwtbBpI4)
+* type check `python3 -m mypy --config-file=mypy.ini bc4py_stratum_pool`
 
 thanks
 ----

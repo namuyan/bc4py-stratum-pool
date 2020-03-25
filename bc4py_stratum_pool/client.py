@@ -2,7 +2,7 @@ from bc4py_stratum_pool.config import co_efficiency
 from bc4py.config import C
 from asyncio.streams import StreamReader, StreamWriter
 from logging import getLogger
-from typing import Optional, List, Deque
+from typing import Optional, List, Tuple, Deque, Any
 from collections import deque
 from time import time
 import asyncio
@@ -17,16 +17,23 @@ log = getLogger(__name__)
 
 class Client(object):
     __slots__ = ("f_enable", "reader", "writer", "algorithm",
-                 "diff_list", "username", "password","account_id",
+                 "diff_list", "username", "password", "account_id",
                  "subscription_id", "extranonce_1", "version",
                  "time_works", "submit_span", "n_accept", "n_reject")
 
-    def __init__(self, reader, writer, algorithm, difficulty, submit_span):
+    def __init__(
+            self,
+            reader: StreamReader,
+            writer: StreamWriter,
+            algorithm: int,
+            difficulty: float,
+            submit_span: int,
+    ) -> None:
         self.f_enable = True
-        self.reader: StreamReader = reader
-        self.writer: StreamWriter = writer
-        self.algorithm: int = algorithm
-        self.diff_list = deque(maxlen=5)
+        self.reader = reader
+        self.writer = writer
+        self.algorithm = algorithm
+        self.diff_list: Deque[float] = deque(maxlen=5)
         self.diff_list.append(difficulty)
         self.username: Optional[str] = None
         self.password: Optional[str] = None
@@ -34,12 +41,12 @@ class Client(object):
         self.subscription_id: Optional[bytes] = None
         self.extranonce_1: Optional[bytes] = None
         self.version: Optional[str] = None
-        self.time_works = deque(maxlen=40)
+        self.time_works: Deque[Tuple[float, float]] = deque(maxlen=40)
         self.submit_span = submit_span
         self.n_accept = 0
         self.n_reject = 0
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<Client {self.consensus_name} ver='{self.version}' " \
             f"'auth={self.username}:{self.password}' hashrate={self.hashrate_str}>"
 
@@ -50,16 +57,16 @@ class Client(object):
         return host[0]
 
     @property
-    def consensus_name(self):
+    def consensus_name(self) -> str:
         return C.consensus2name[self.algorithm]
 
     @property
-    def difficulty(self):
+    def difficulty(self) -> float:
         """get newest difficulty"""
         return self.diff_list[-1]
 
     @difficulty.setter
-    def difficulty(self, value):
+    def difficulty(self, value: float) -> None:
         """add new difficulty"""
         self.diff_list.append(value)
 
@@ -107,11 +114,11 @@ class Client(object):
             return 0
         end_time = self.time_works[-1][0]
         # difficulty_in_600s = difficulty_in_Ns * 600 / N
-        miner_diff = sum_diff * 600.0 / co_efficiency[self.algorithm] / max(1, end_time - begin_time)
+        miner_diff = sum_diff * 600.0 / co_efficiency[self.algorithm] / max(1.0, end_time - begin_time)
         return int(miner_diff * 7158278.8)
 
     @property
-    def hashrate_str(self):
+    def hashrate_str(self) -> str:
         hashrate = self.hashrate
         if hashrate == 0:
             return "Calculating"
@@ -124,12 +131,12 @@ class Client(object):
         else:
             return f"{round(hashrate/1000000000, 1)}G Hash/s"
 
-    async def send(self, method, params, uuid):
+    async def send(self, method: str, params: List[Any], uuid: Optional[int]) -> None:
         data = json.dumps({'method': method, 'params': params, 'id': uuid})
         self.writer.write(data.encode() + b'\n')
         await self.writer.drain()
 
-    async def close(self):
+    async def close(self) -> None:
         self.f_enable = False
         if not self.writer.transport.is_closing():
             self.writer.close()
@@ -138,26 +145,26 @@ class Client(object):
                 client_list.remove(self)
 
 
-async def create_client(*args):
+async def create_client(*args) -> Client:  # type: ignore
     client = Client(*args)
     async with client_lock:
         client_list.append(client)
     return client
 
 
-async def response_success(client: Client, result, uuid):
+async def response_success(client: Client, result: Any, uuid: int) -> None:
     response = json.dumps({'result': result, 'error': None, 'id': uuid})
     client.writer.write(response.encode() + b'\n')
     await client.writer.drain()
 
 
-async def response_failed(client: Client, error, uuid):
+async def response_failed(client: Client, error: '_ERROR_RESPONSE', uuid: int) -> None:
     response = json.dumps({'result': None, 'error': error, 'id': uuid})
     client.writer.write(response.encode() + b'\n')
     await client.writer.drain()
 
 
-async def broadcast_clients(method, params, algorithm) -> int:
+async def broadcast_clients(method: str, params: List[Any], algorithm: int) -> int:
     """broadcast to ALL miners with a specific algorithm"""
     data = json.dumps({
         'method': method,
@@ -182,6 +189,7 @@ async def broadcast_clients(method, params, algorithm) -> int:
 
 
 # error response
+_ERROR_RESPONSE = Tuple[int, str]
 OTHER_UNKNOWN = (20, "Other/Unknown")
 JOB_NOT_FOUND = (21, "Job not found")
 DUPLICATE_SHARE = (22, "Duplicate share")

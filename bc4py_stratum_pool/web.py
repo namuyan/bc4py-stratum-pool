@@ -4,6 +4,7 @@ from bc4py_stratum_pool.autowork import *
 from bc4py_stratum_pool.client import client_list
 from bc4py_stratum_pool.stratum import stratum_list
 from bc4py.config import C
+from typing import Dict, Any, Coroutine, Callable
 from logging import getLogger
 from aiohttp.web import Request
 from aiohttp import web
@@ -17,7 +18,10 @@ import os
 loop = asyncio.get_event_loop()
 log = getLogger(__name__)
 DISABLE_EXPLORER = False
-cache = dict()
+cache: Dict[str, Any] = dict()
+
+# type
+_HTTP_RESPONSE = Dict[str, Any]
 
 
 async def check_node_status() -> bool:
@@ -38,7 +42,7 @@ async def check_node_status() -> bool:
 
 
 @aiohttp_jinja2.template('index.html')
-async def page_index(request: Request):
+async def page_index(request: Request) -> _HTTP_RESPONSE:
     return {
         'title': 'main page',
         'is_online': await check_node_status(),
@@ -46,7 +50,7 @@ async def page_index(request: Request):
 
 
 @aiohttp_jinja2.template('started.html')
-async def page_started(request: Request):
+async def page_started(request: Request) -> _HTTP_RESPONSE:
     return {
         'title': 'getting started',
         'is_online': await check_node_status(),
@@ -56,7 +60,7 @@ async def page_started(request: Request):
 
 
 @aiohttp_jinja2.template('dashboard.html')
-async def page_dashboard(request: Request):
+async def page_dashboard(request: Request) -> _HTTP_RESPONSE:
     if len(block_history_list) == 0 or len(pool_status_list) == 0:
         return {
             'title': 'dashboard',
@@ -89,7 +93,7 @@ async def page_dashboard(request: Request):
 
 
 @aiohttp_jinja2.template('explorer.html')
-async def page_explorer(request: Request):
+async def page_explorer(request: Request) -> _HTTP_RESPONSE:
     # At the beginning, history list is empty
     if not DISABLE_EXPLORER and 'blockhash' in request.query:
         try:
@@ -156,7 +160,7 @@ async def page_explorer(request: Request):
 
 
 @aiohttp_jinja2.template('connection.html')
-async def page_connection(request: Request):
+async def page_connection(request: Request) -> _HTTP_RESPONSE:
     data = [
         {
             'version': client.version,
@@ -176,7 +180,7 @@ async def page_connection(request: Request):
 
 
 @aiohttp_jinja2.template('status.html')
-async def page_status(request: Request):
+async def page_status(request: Request) -> _HTTP_RESPONSE:
     return {
         'title': 'node status',
         'is_online': await check_node_status(),
@@ -186,15 +190,18 @@ async def page_status(request: Request):
 
 
 @aiohttp_jinja2.template('terms.html')
-async def page_terms(request: Request):
+async def page_terms(request: Request) -> _HTTP_RESPONSE:
     return {
         'title': 'Terms&Conditions',
         'is_online': await check_node_status(),
     }
 
 
-async def error_middleware(app, handler):
-    async def middleware_handler(request: Request):
+async def error_middleware(
+        app: web.Application,
+        handler: Callable,
+) -> Callable[[Request], Coroutine[Any, Any, web.Response]]:
+    async def middleware_handler(request: Request) -> web.Response:
         try:
             return await handler(request)
         except BlockExplorerError as e:
@@ -214,7 +221,7 @@ async def error_middleware(app, handler):
     return middleware_handler
 
 
-async def web_server(port, host='0.0.0.0', ssl_context=None):
+async def web_server(port: int, host: str = '0.0.0.0', ssl_context: Any = None) -> None:
     """http web server"""
     try:
         app = web.Application(middlewares=[error_middleware])

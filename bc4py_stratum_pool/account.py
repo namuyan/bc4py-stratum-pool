@@ -1,6 +1,6 @@
 from aiocontext import async_contextmanager
 from aiosqlite import connect, Connection, Cursor
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Sequence, Tuple, AsyncIterator
 from logging import getLogger, INFO
 from binascii import a2b_hex
 from os import urandom
@@ -11,7 +11,7 @@ getLogger('aiosqlite').setLevel(INFO)
 
 
 @async_contextmanager
-async def create_db(path, strict=False) -> Connection:
+async def create_db(path: str, strict: bool = False) -> Connection:
     """
     account database connector
     TODO: will be duplicate with bc4py's
@@ -51,7 +51,7 @@ async def create_db(path, strict=False) -> Connection:
         await conn.close()
 
 
-async def first_init_database(path):
+async def first_init_database(path: str) -> None:
     """
     initialize database
 
@@ -100,7 +100,7 @@ async def first_init_database(path):
     log.info("finish init database")
 
 
-async def cleanup_database(path, past=60*24*60):
+async def cleanup_database(path: str, past: int = 60*24*60) -> None:
     """cleanup old data from database"""
     try:
         async with create_db(path) as db:
@@ -122,7 +122,7 @@ async def cleanup_database(path, past=60*24*60):
 """
 
 
-async def read_address2account_id(cur: Cursor, address, create_if_missing=False) -> int:
+async def read_address2account_id(cur: Cursor, address: str, create_if_missing: bool = False) -> int:
     """get id from address, create if missing as option"""
     await cur.execute("""
     SELECT `id` FROM `account` WHERE `address`=?
@@ -136,7 +136,7 @@ async def read_address2account_id(cur: Cursor, address, create_if_missing=False)
         return account_id[0]
 
 
-async def read_account_id2address(cur: Cursor, account_id) -> Optional[str]:
+async def read_account_id2address(cur: Cursor, account_id: int) -> Optional[str]:
     """get address by account_id"""
     await cur.execute("""
     SELECT `address` FROM `account` WHERE `id`=?
@@ -148,7 +148,7 @@ async def read_account_id2address(cur: Cursor, account_id) -> Optional[str]:
         return address[0]
 
 
-async def insert_new_account(cur: Cursor, address) -> int:
+async def insert_new_account(cur: Cursor, address: str) -> int:
     """create new account by address"""
     await cur.execute("""
         INSERT INTO `account` (`address`, `time`) VALUES (?, ?)
@@ -162,7 +162,7 @@ async def insert_new_account(cur: Cursor, address) -> int:
 """
 
 
-async def read_subscription_id2extranonce(cur: Cursor, subscription_id: bytes):
+async def read_subscription_id2extranonce(cur: Cursor, subscription_id: bytes) -> None:
     """get extranonce_1 from subscription_id"""
     top_id = subscription_id[26:32]
     await cur.execute("""
@@ -174,7 +174,7 @@ async def read_subscription_id2extranonce(cur: Cursor, subscription_id: bytes):
     return extranonce[0]
 
 
-async def insert_new_subscription(cur: Cursor, extranonce):
+async def insert_new_subscription(cur: Cursor, extranonce: bytes) -> bytes:
     """recode extranonce and subscription_id"""
     top_id = urandom(6)
     await cur.execute("""
@@ -188,7 +188,7 @@ async def insert_new_subscription(cur: Cursor, extranonce):
 """
 
 
-async def read_total_unpaid_shares(cur: Cursor, begin, end, f_raise=True) -> float:
+async def read_total_unpaid_shares(cur: Cursor, begin: float, end: float, f_raise: bool = True) -> float:
     """get total un_payed works from begin to end"""
     await cur.execute("""
     SELECT SUM(`share`) FROM `share` WHERE ? <= `time` AND `time` < ? AND `payout_id` < 1
@@ -201,7 +201,7 @@ async def read_total_unpaid_shares(cur: Cursor, begin, end, f_raise=True) -> flo
     return share[0]
 
 
-async def read_account_unpaid_shares(cur: Cursor, begin, end, account_id) -> float:
+async def read_account_unpaid_shares(cur: Cursor, begin: float, end: float, account_id: int) -> float:
     """get account's work from begin to end"""
     await cur.execute("""
     SELECT SUM(`share`) FROM `share` WHERE ? <= `time` AND `time` < ? AND `payout_id` < 1 AND `account_id`=?
@@ -212,7 +212,7 @@ async def read_account_unpaid_shares(cur: Cursor, begin, end, account_id) -> flo
     return data[0]
 
 
-async def read_distribution_shares(cur: Cursor, begin, end, algorithm) -> Dict[int, float]:
+async def read_distribution_shares(cur: Cursor, begin: float, end: float, algorithm: int) -> Dict[int, float]:
     """get each account's mining share"""
     await cur.execute("""
     SELECT `account_id`, SUM(`share`) FROM `share`
@@ -224,7 +224,7 @@ async def read_distribution_shares(cur: Cursor, begin, end, algorithm) -> Dict[i
     return dist
 
 
-async def read_related_accounts(cur: Cursor, begin, end) -> List[int]:
+async def read_related_accounts(cur: Cursor, begin: float, end: float) -> List[int]:
     """get unique account's id related share"""
     await cur.execute("""
     SELECT DISTINCT `account_id` FROM `share` WHERE ? <= `time` AND `time` < ?
@@ -233,7 +233,7 @@ async def read_related_accounts(cur: Cursor, begin, end) -> List[int]:
     return [account_id for (account_id,) in data]
 
 
-async def read_related_blockhash(cur: Cursor, begin, end) -> List[bytes]:
+async def read_related_blockhash(cur: Cursor, begin: float, end: float) -> List[bytes]:
     """get unique account's id related share"""
     await cur.execute("""
     SELECT DISTINCT `blockhash` FROM `share` WHERE ? <= `time` AND `time` < ?
@@ -257,7 +257,7 @@ async def read_last_unpaid_time(cur: Cursor) -> Optional[float]:
     return before_time
 
 
-async def iter_latest_mined_shares(cur: Cursor):
+async def iter_latest_mined_shares(cur: Cursor) -> AsyncIterator[Tuple[int, bytes]]:
     await cur.execute("""
     SELECT `time`, `blockhash`, `payout_id` FROM `share` ORDER BY `time` DESC
     """)
@@ -268,7 +268,14 @@ async def iter_latest_mined_shares(cur: Cursor):
             yield ntime, blockhash
 
 
-async def insert_new_share(cur: Cursor, account_id, algorithm, blockhash, share, payout_id):
+async def insert_new_share(
+        cur: Cursor,
+        account_id: int,
+        algorithm: int,
+        blockhash: bytes,
+        share: float,
+        payout_id: int
+) -> None:
     """recode account's submit share"""
     await cur.execute("""
     INSERT INTO `share` (
@@ -277,7 +284,8 @@ async def insert_new_share(cur: Cursor, account_id, algorithm, blockhash, share,
     """, (time(), account_id, algorithm, blockhash, share, payout_id))
 
 
-async def update_shares_as_paid(cur: Cursor, payout_id, begin, end, accounts):
+async def update_shares_as_paid(cur: Cursor, payout_id: int, begin: float, end: float, accounts: Sequence[int])\
+        -> None:
     """mark paid shares"""
     for uuid in accounts:
         assert isinstance(uuid, int)
@@ -287,7 +295,7 @@ async def update_shares_as_paid(cur: Cursor, payout_id, begin, end, accounts):
     """ % ', '.join(map(str, accounts)), (payout_id, begin, end))
 
 
-async def revert_paid_shares(cur: Cursor, begin, end, payout_id):
+async def revert_paid_shares(cur: Cursor, begin: float, end: float, payout_id: int) -> None:
     """revert paid shares"""
     await cur.execute("""
     UPDATE `share` SET `payout_id`=0 WHERE ? <= `time` AND `time` < ? AND `payout_id`=?
@@ -298,7 +306,7 @@ async def revert_paid_shares(cur: Cursor, begin, end, payout_id):
 """
 
 
-async def read_payout2txhash(cur: Cursor, payout_id):
+async def read_payout2txhash(cur: Cursor, payout_id: int) -> bytes:
     """get txhash by payout id"""
     await cur.execute("""
     SELECT `txhash` FROM `transaction` WHERE `id`=?
@@ -309,18 +317,18 @@ async def read_payout2txhash(cur: Cursor, payout_id):
     return txhash[0]
 
 
-async def read_txhash2payout(cur: Cursor, txhash):
+async def read_txhash2payout(cur: Cursor, txhash: bytes) -> int:
     """get payout id from txhash"""
     await cur.execute("""
     SELECT `id` FROM `transaction` WHERE `txhash`=?
     """, (txhash,))
-    payout_id =await cur.fetchone()
+    payout_id = await cur.fetchone()
     if payout_id is None:
         raise DatabaseError(f"not found txhash {txhash.hex()}")
     return payout_id[0]
 
 
-async def read_last_paid_txhash(cur: Cursor):
+async def read_last_paid_txhash(cur: Cursor) -> Optional[bytes]:
     """get last paid txhash"""
     await cur.execute("""
         SELECT `txhash` FROM `transaction` ORDER BY `id` DESC
@@ -331,7 +339,7 @@ async def read_last_paid_txhash(cur: Cursor):
     return txhash[0]
 
 
-async def iter_payout_transactions(cur: Cursor):
+async def iter_payout_transactions(cur: Cursor) -> AsyncIterator[Tuple[int, bytes, int, int, int, int]]:
     """list all payout transactions"""
     await cur.execute("""
     SELECT `id`, `txhash`, `amount`, `begin`, `end`, `time` FROM `transaction` ORDER BY `id` DESC
@@ -340,11 +348,11 @@ async def iter_payout_transactions(cur: Cursor):
         yield data
 
 
-async def insert_new_transaction(cur: Cursor, txhash, amount, begin, end) -> int:
+async def insert_new_transaction(cur: Cursor, txhash: bytes, amount: int, begin: float, end: float) -> int:
     await cur.execute("""
     INSERT INTO `transaction` (`txhash`, `amount`, `begin`, `end`, `time`)
     VALUES (?, ?, ?, ?, ?)
-    """, (txhash, amount, begin, end, int(time())))
+    """, (txhash, amount, int(begin), int(end), int(time())))
     return cur.lastrowid
 
 

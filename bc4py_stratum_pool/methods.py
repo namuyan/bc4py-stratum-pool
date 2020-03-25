@@ -18,7 +18,7 @@ from logging import getLogger
 log = getLogger(__name__)
 
 
-async def mining_authorize(client: Client, params: list, uuid: int):
+async def mining_authorize(client: Client, params: list, uuid: int) -> None:
     """
     mining.authorize("username", "password")
 
@@ -34,7 +34,7 @@ async def mining_authorize(client: Client, params: list, uuid: int):
             return
         if username is None or password is None:
             log.debug("authorization account incorrect")
-            await response_failed(client, False, uuid)
+            await response_failed(client, UNAUTHORIZED_WORKER, uuid)
             return
         client.username = username
         client.password = password
@@ -61,7 +61,7 @@ async def mining_authorize(client: Client, params: list, uuid: int):
         await response_success(client, False, uuid)
 
 
-async def mining_extranonce_subscribe(client: Client, params: list, uuid: int):
+async def mining_extranonce_subscribe(client: Client, params: list, uuid: int) -> None:
     """
     mining.extranonce.subscribe()
 
@@ -71,7 +71,7 @@ async def mining_extranonce_subscribe(client: Client, params: list, uuid: int):
     await response_success(client, None, uuid)
 
 
-async def mining_get_transactions(client: Client, params: list, uuid: int):
+async def mining_get_transactions(client: Client, params: list, uuid: int) -> None:
     """
     mining.get_transactions("job id")
 
@@ -85,7 +85,7 @@ async def mining_get_transactions(client: Client, params: list, uuid: int):
     await response_success(client, txs, uuid)
 
 
-async def mining_submit(client: Client, params: list, uuid: int):
+async def mining_submit(client: Client, params: list, uuid: int) -> None:
     """
     mining.submit("username", "job id", "ExtraNonce2", "nTime", "nonce")
 
@@ -165,7 +165,7 @@ async def mining_submit(client: Client, params: list, uuid: int):
         await response_failed(client, OTHER_UNKNOWN, uuid)
 
 
-async def mining_subscribe(client: Client, params: list, uuid: int):
+async def mining_subscribe(client: Client, params: list, uuid: int) -> None:
     """
     mining.subscribe(option: "version", option: "subscription_id")
 
@@ -235,7 +235,7 @@ async def mining_subscribe(client: Client, params: list, uuid: int):
     await response_success(client, result, uuid)
 
 
-async def mining_suggest_difficulty(client: Client, params: list, uuid: int):
+async def mining_suggest_difficulty(client: Client, params: list, uuid: int) -> None:
     """
     mining.suggest_difficulty(preferred share difficulty Number)
 
@@ -244,9 +244,10 @@ async def mining_suggest_difficulty(client: Client, params: list, uuid: int):
     """
     # difficulty, *others = params
     # client.difficulty = difficulty
+    raise NotImplemented
 
 
-async def mining_suggest_target(client: Client, params: list, uuid: int):
+async def mining_suggest_target(client: Client, params: list, uuid: int) -> None:
     """
     mining.suggest_target("full hex share target")
 
@@ -256,6 +257,7 @@ async def mining_suggest_target(client: Client, params: list, uuid: int):
     # target, *others = params
     # target = a2b_hex(target)
     # client.difficulty = round(DEFAULT_TARGET / float(int.from_bytes(target, 'little')), 8)
+    raise NotImplemented
 
 
 __all__ = [

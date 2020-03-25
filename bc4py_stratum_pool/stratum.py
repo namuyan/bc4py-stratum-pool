@@ -4,7 +4,7 @@ from bc4py_stratum_pool.client import *
 from bc4py_stratum_pool.commands import mining_set_difficulty, client_reconnect
 from asyncio.streams import StreamReader, StreamWriter
 from bc4py.config import C
-from typing import List
+from typing import TYPE_CHECKING, List, Tuple, Any, Callable, Coroutine, Generator
 from logging import getLogger
 from collections import namedtuple
 import asyncio
@@ -16,8 +16,14 @@ SOCKET_TIMEOUT = 1200  # 20min
 Stratum = namedtuple('Stratum', ['port', 'algorithm', 'difficulty', 'variable_diff'])
 stratum_list: List[Stratum] = list()
 
+# typing
+if TYPE_CHECKING:
+    _STRATUM_SERVER = Coroutine[Any, Any, asyncio.AbstractServer]
+else:
+    _STRATUM_SERVER = Generator[Any, None, asyncio.AbstractServer]
 
-async def get_atomic_message(prefix: bytes, reader: StreamReader):
+
+async def get_atomic_message(prefix: bytes, reader: StreamReader) -> Tuple[Any, bytes]:
     """receive message one by one"""
     data = prefix
     while True:
@@ -29,14 +35,19 @@ async def get_atomic_message(prefix: bytes, reader: StreamReader):
         return msg, prefix
 
 
-def stratum_handle(algorithm: int, difficulty: float, variable_diff=True, submit_span=30.0):
+def stratum_handle(
+        algorithm: int,
+        difficulty: float,
+        variable_diff: bool = True,
+        submit_span: float = 30.0
+) -> Callable[[StreamReader, StreamWriter], Coroutine[Any, Any, None]]:
     """
     :param algorithm: mining algorithm number
     :param difficulty: start difficulty
     :param variable_diff: auto adjust difficulty flag
     :param submit_span: submit share span
     """
-    async def handle(reader: StreamReader, writer: StreamWriter):
+    async def handle(reader: StreamReader, writer: StreamWriter) -> None:
         # create new client
         client = await create_client(reader, writer, algorithm, difficulty, submit_span)
         log.info(f"new client join {client.get_peer_name()}")
@@ -91,7 +102,13 @@ def stratum_handle(algorithm: int, difficulty: float, variable_diff=True, submit
     return handle
 
 
-def stratum_server(port: int, algorithm: int, difficulty: float, variable_diff=True, host='0.0.0.0'):
+def stratum_server(
+        port: int,
+        algorithm: int,
+        difficulty: float,
+        variable_diff: bool = True,
+        host: str = '0.0.0.0'
+) -> _STRATUM_SERVER:
     assert algorithm in C.consensus2name
     # port duplication check
     for stratum in stratum_list:
@@ -101,16 +118,17 @@ def stratum_server(port: int, algorithm: int, difficulty: float, variable_diff=T
     log.info(f"add new stratum {algorithm_name} stratum+tcp://{host}:{port} "
              f"diff={difficulty} variable_diff={variable_diff}")
     stratum_list.append(Stratum(port, algorithm_name, difficulty, variable_diff))
-    return asyncio.start_server(stratum_handle(algorithm, difficulty, variable_diff), host, port, loop=loop)
+    stratum = stratum_handle(algorithm, difficulty, variable_diff)
+    return asyncio.start_server(stratum, host, port, loop=loop)
 
 
-async def wrap_with_delay(sec, func, *args):
+async def wrap_with_delay(sec, func, *args) -> None:  # type: ignore
     """add delay for async fnc"""
     await asyncio.sleep(sec)
     await func(*args)
 
 
-async def schedule_dynamic_difficulty(client: Client, schedule_span=90):
+async def schedule_dynamic_difficulty(client: Client, schedule_span: int = 90) -> None:
     """
     adjust difficulty at regular interval
     node: short schedule span often cause low-difficulty-share reject

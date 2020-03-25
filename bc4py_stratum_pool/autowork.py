@@ -5,6 +5,7 @@ from bc4py_stratum_pool.account import *
 from bc4py_stratum_pool.client import client_list
 from bc4py_stratum_pool.ask import *
 from bc4py.config import C
+from typing import List, Dict, DefaultDict, Deque
 from collections import deque, defaultdict
 from logging import getLogger
 from asyncio import wait_for
@@ -16,15 +17,19 @@ import asyncio
 
 log = getLogger(__name__)
 loop = asyncio.get_event_loop()
-block_notify_que = asyncio.queues.Queue()
-block_history_list = deque(maxlen=50)
-tx_history_list = deque(maxlen=50)
-consensus_list = list()
+block_notify_que: asyncio.queues.Queue = asyncio.queues.Queue()
+block_history_list: Deque[dict] = deque(maxlen=50)
+tx_history_list: Deque[dict] = deque(maxlen=50)
+consensus_list: List[int] = list()
 f_enable = True
 
 
 async def auto_distribution_recode(
-        algorithm_list: list, owner_fee=0.05, job_span=60, search_span=10800):
+        algorithm_list: List[int],
+        owner_fee: float = 0.05,
+        job_span: int = 60,
+        search_span: int = 10800
+) -> None:
     """recode miner's distribution"""
     assert 0.0 < owner_fee < 1.0
     max_outputs_num = 255
@@ -57,9 +62,13 @@ async def auto_distribution_recode(
                             log.debug(f"remove from share id={account_id} share={round(share, 8)}")
                     # calculate distribution
                     total_share = sum(account_shares.values()) / (1 - owner_fee)
-                    distribution = [
-                        (await read_account_id2address(cur=cur, account_id=account_id), share / total_share)
-                        for account_id, share in account_shares.items()]
+                    distribution = list()
+                    for account_id, share in account_shares.items():
+                        account_name = await read_account_id2address(cur=cur, account_id=account_id)
+                        distribution.append((
+                            account_name,  # type: ignore
+                            share / total_share,
+                        ))
                     distribution.insert(0, (None, owner_fee))
                     # recode distribution
                     distribution_list.append(Distribution(
@@ -70,7 +79,12 @@ async def auto_distribution_recode(
 
 
 async def auto_payout_system(
-        min_confirm: int, min_amount=5000000000, owner_fee=0.05, ignore_amount=10000, check_span=3600):
+        min_confirm: int,
+        min_amount: int = 5000000000,
+        owner_fee: float = 0.05,
+        ignore_amount: int = 10000,
+        check_span: int = 3600
+) -> None:
     """
     auto payout to miners
     :param min_confirm: minimum confirmation heights
@@ -124,6 +138,7 @@ async def auto_payout_system(
                 log.debug(f"total send amount is {total_send_amount}, owner get {total_mined_amount-total_send_amount}")
                 # find begin time
                 begin = await read_last_unpaid_time(cur)
+                assert begin is not None
                 # calculate distribution
                 related_accounts = await read_related_accounts(cur=cur, begin=begin, end=end)
                 account_share_dict = dict()
@@ -147,8 +162,7 @@ async def auto_payout_system(
                     log.info(f"no payout accounts")
                     continue
                 # try to send
-                params = {'pairs': payout_pairs}
-                result = await ask_post('/private/sendmany', params)
+                result = await ask_post('/private/sendmany', {'pairs': payout_pairs})
                 log.info(f"success payout! {result['hash']}")
                 # recode payout
                 payout_id = await insert_new_transaction(
@@ -166,7 +180,7 @@ async def auto_payout_system(
                 await db.rollback()
 
 
-async def auto_pool_status_recode(job_span=60):
+async def auto_pool_status_recode(job_span: int = 60) -> None:
     """recode pool status for dashboard.html"""
     global f_enable
     log.info("start auto recode status")
@@ -180,21 +194,21 @@ async def auto_pool_status_recode(job_span=60):
                 # mined share
                 share = await read_total_unpaid_shares(cur=cur, begin=last_update_time, end=ntime, f_raise=False)
                 # workers
-                workers = defaultdict(int)
+                worker_dict: DefaultDict[str, int] = defaultdict(int)
                 for client in client_list:
-                    workers[client.consensus_name] += 1
-                workers = tuple(workers.items())
+                    worker_dict[client.consensus_name] += 1
+                workers = tuple(worker_dict.items())
                 # pool hashrate
-                pool_hashrate = defaultdict(int)
+                pool_hashrate_dict: DefaultDict[str, int] = defaultdict(int)
                 for client in client_list:
-                    pool_hashrate[client.consensus_name] += client.hashrate
-                pool_hashrate = tuple(pool_hashrate.items())
+                    pool_hashrate_dict[client.consensus_name] += client.hashrate
+                pool_hashrate = tuple(pool_hashrate_dict.items())
                 # network hashrate
-                network_hashrate = dict()
+                network_hashrate_dict: Dict[str, int] = dict()
                 for block in reversed(block_history_list):
-                    if block['flag'] not in network_hashrate:
-                        network_hashrate[block['flag']] = int(block['difficulty'] * 7158278.8)
-                network_hashrate = tuple(network_hashrate.items())
+                    if block['flag'] not in network_hashrate_dict:
+                        network_hashrate_dict[block['flag']] = int(block['difficulty'] * 7158278.8)
+                network_hashrate = tuple(network_hashrate_dict.items())
                 # recode pool status
                 pool_status_list.append(PoolStatus(
                     ntime, workers, pool_hashrate, network_hashrate, share))
@@ -205,7 +219,7 @@ async def auto_pool_status_recode(job_span=60):
             log.error(f"auto pool status recode exception", exc_info=True)
 
 
-async def auto_block_notify(algorithm_list: list, job_span=60):
+async def auto_block_notify(algorithm_list: List[int], job_span: int = 60) -> None:
     """auto mining job update when new block receive or job_span passed"""
     global f_enable
     last_force_update = 0.0
@@ -245,7 +259,7 @@ async def auto_block_notify(algorithm_list: list, job_span=60):
     log.info("close auto notify")
 
 
-async def auto_notify_by_ws(dest='/public/ws'):
+async def auto_notify_by_ws(dest: str = '/public/ws') -> None:
     """receive new block by websocket"""
     global f_enable
     while f_enable:
@@ -276,7 +290,7 @@ async def auto_notify_by_ws(dest='/public/ws'):
             await asyncio.sleep(10.0)
 
 
-def close_auto_works():
+def close_auto_works() -> None:
     global f_enable
     log.info("close auto notify")
     f_enable = False

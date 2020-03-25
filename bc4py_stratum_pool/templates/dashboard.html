@@ -158,7 +158,7 @@
           let rand_value = ["FF", "00", Math.floor(Math.random() * 0xFF).toString(16)];
           let color = "#";
           while (0 < rand_value.length) {
-              let select = rand_value[Math.floor(Math.random()*rand_value.length)]
+              let select = rand_value[Math.floor(Math.random()*rand_value.length)];
               color += select;
               rand_value = rand_value.filter(value => value !== select);
           }
@@ -168,9 +168,9 @@
       x_axis = x_axis.map(element => {
           let now = new Date(element * 1000);
           let hour = now.getHours(), minute = now.getMinutes();
-          let str = ''
+          let str = '';
           if (hour < 10) {str += '0'}
-          str += hour + ':'
+          str += hour + ':';
           if (minute < 10) {str += '0'}
           return str + minute;
       });
